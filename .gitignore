@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+data/raw_html/
+data/processed/
+outputs/csv_b64_payloads.json
