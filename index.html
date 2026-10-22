@@ -76,14 +76,17 @@
         <button role="tab" aria-selected="false" onclick="switchTab('tab-feat', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
           ③ 特徴量の作成手順（当落線差の解説）
         </button>
+        <button role="tab" aria-selected="false" onclick="switchTab('tab-custom-feat', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
+          ④ 自作特徴量の作り方（全レシピ図鑑）
+        </button>
         <button role="tab" aria-selected="false" onclick="switchTab('tab-infer', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
-          ④ 特徴量から予想を立てる仕組み
+          ⑤ 特徴量から予想を立てる仕組み
         </button>
         <button role="tab" aria-selected="false" onclick="switchTab('tab-eval', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
-          ⑤ データ分割と予測結果（2024–2026）
+          ⑥ データ分割と予測結果（2024–2026）
         </button>
         <button role="tab" aria-selected="false" onclick="switchTab('tab-errors', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
-          ⑥ 2024・2025年「なぜ間違えたのか？」分析
+          ⑦ 2024・2025年「なぜ間違えたのか？」分析
         </button>
       </nav>
     </header>
@@ -523,7 +526,364 @@
     </section>
 
     <!-- ==========================================
-         TAB 4: How Predictions Are Made from Features
+         TAB 4: How Custom Features Were Created (Full Recipe Book)
+         ========================================== -->
+    <section id="tab-custom-feat" class="tab-panel hidden space-y-6">
+      <!-- 1. Overview & Why Decision Trees Need Engineered Features -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span class="step-badge px-2.5 py-0.5 rounded-md text-xs">自作特徴量の全レシピ</span>
+            元データの成績表から「自分で作成した特徴量」はどのように計算・設計したのか？
+          </h2>
+          <span class="text-xs px-3 py-1 rounded-full bg-[var(--secondary)] text-[var(--secondary-foreground)] font-semibold">
+            野手：元データ35列 → 自作103列追加 ／ 投手：元データ31列 → 自作28列追加
+          </span>
+        </div>
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          プロ野球データFreakから取得した「生の成績表（打率・本塁打・防御率・勝利数など）」だけでは、ランダムフォレストもLightGBMも高い精度を出せません。<br/>
+          なぜなら、<strong>決定木（Decision Tree）は「1つの列をある数値（閾値）で縦か横に切る」ことしかできず、「A列とB列の引き算・割り算」や「同じ年・同じポジションのライバルとの比較」を自力で計算できない</strong>からです。そこで <code>build_features_and_train.py</code> の中で、以下の<strong>4つの変換ルール</strong>を使って合計131個の自作特徴量を作成しました。
+        </p>
+
+        <!-- 4 Fundamental Feature Engineering Patterns -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="text-xs font-bold text-[var(--primary)]">作り方パターン①：引き算・割り算</div>
+            <div class="text-sm font-bold">決定木が苦手な「差」と「比率」</div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              例：<code>貯金 ＝ 勝利 − 敗北</code>、<code>先発比率 ＝ 先発数 ÷ 試合数</code>、<code>本人内専任率 ＝ 守備位置先発 ÷ 総スタメン数</code>。2つの列の関係を1つの数字にまとめます。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="text-xs font-bold text-[var(--primary)]">作り方パターン②：重み付け掛け算</div>
+            <div class="text-sm font-bold">打撃指標 × 守備位置出場率</div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              例：<code>pos_weighted_RC</code>。「素のRC」に「チーム試合75%充足率」と「本人内専任率」を掛け算し、兼任選手や出場不足選手の数値を自動で割り引きます。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="text-xs font-bold text-[var(--primary)]">作り方パターン③：グループ内相対化</div>
+            <div class="text-sm font-bold">同年度・同ポジション内の比較</div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              <code>groupby(["year", "league", "position"])</code> を使い、その年のライバルの中での「順位」「当落線との差」「Zスコア（偏差値）」を計算します。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="text-xs font-bold text-[var(--primary)]">作り方パターン④：ドメイン知識の凝縮</div>
+            <div class="text-sm font-bold">タイトル条件＆優勝交差項</div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              NPB規定（13勝以上で最高勝率など）に基づく<code>主要タイトル数</code>や、<code>RC × 優勝フラグ</code>、<code>先発勝利インパクト</code>など記者心理を数式化します。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Interactive Recipe Catalog (Batter vs Pitcher Custom Features) -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+          <div>
+            <h3 class="text-base font-bold">📖 自作特徴量の作成レシピ＆計算式図鑑（全カテゴリー完全解説）</h3>
+            <p class="text-xs text-[var(--muted-foreground)] mt-0.5">
+              下のボタンで「🏏 野手・DH用の自作特徴量（5系統）」と「⚾ 投手用の自作特徴量（4系統）」を切り替えて、元データからどう計算したかを確認できます。
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="switchCustomFeatGroup('batter')" id="cf-btn-batter" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer transition">
+              🏏 野手・DHの自作特徴量（5系統・103個）
+            </button>
+            <button onclick="switchCustomFeatGroup('pitcher')" id="cf-btn-pitcher" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition">
+              ⚾ 投手の自作特徴量（4系統・28個）
+            </button>
+          </div>
+        </div>
+
+        <!-- BATTER CUSTOM FEATURES PANEL -->
+        <div id="cf-panel-batter" class="space-y-4">
+          <!-- Category B1 -->
+          <div class="p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)]">野手レシピ ①</span>
+                <h4 class="text-sm font-bold">日別スタメン表（年間約860試合）から作成した「守備位置・出場専任度」特徴量（15個）</h4>
+              </div>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">元データ：lineup/{球団}-pos.html × 順位表 × 選手名鑑</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              データFreakの打撃成績表には「どのポジションを何試合守ったか」がありません。そこで全試合のスタメン表を集計した <code>スタメン_{守備位置}</code> と、球団順位表の <code>team_games</code>（チーム試合数：通常143試合、2020年は120試合）を組み合わせて以下の特徴量を作成しました。
+            </p>
+            <div class="overflow-x-auto border border-[var(--border)] rounded-lg">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                  <tr>
+                    <th class="py-2 px-3">作成した特徴量名</th>
+                    <th class="py-2 px-3">使用した元データ列</th>
+                    <th class="py-2 px-3">具体的な計算式（Python / 数式）</th>
+                    <th class="py-2 px-3">なぜこの特徴量を作ったのか？（意図）</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border)] bg-[var(--card)]">
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">pos_starts</td>
+                    <td class="py-2 px-3 font-mono">日別スタメン表 (1〜9番の守備位置)</td>
+                    <td class="py-2 px-3 font-mono">その守備位置で先発出場した試合数の合計（※外野手は左翼＋中堅＋右翼の合計）</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">内野手（一・二・三・遊）のどこで何試合出たかを正確に特定するため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">pos_starts_rate_team</td>
+                    <td class="py-2 px-3 font-mono">pos_starts, team_games</td>
+                    <td class="py-2 px-3 font-mono">pos_starts / team_games</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">143試合制と2020年120試合制の違いを吸収し「チーム試合の何割その守備位置で先発したか」を表すため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">pos_starts_share_player</td>
+                    <td class="py-2 px-3 font-mono">pos_starts, スタメン_総数</td>
+                    <td class="py-2 px-3 font-mono">pos_starts / スタメン_総数</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]"><strong>「本人内の専任率」</strong>。100試合すべて捕手（100%）か、捕手69・一塁45の兼任（60%）かを区別するため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">is_primary_pos / diff_from_primary_starts</td>
+                    <td class="py-2 px-3 font-mono">各守備位置のpos_starts</td>
+                    <td class="py-2 px-3 font-mono">pos_starts == max(全守備位置) なら 1 / pos_starts − max_starts</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">メイン守備位置（1）かサブ守備位置（0・マイナス値）かを判定し、サブ位置での誤当選を防ぐため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">規定打席到達 / 規定打席充足率</td>
+                    <td class="py-2 px-3 font-mono">打席数, team_games</td>
+                    <td class="py-2 px-3 font-mono">規定打席数 = round(team_games × 3.1)<br/>充足率 = 打席数 / 規定打席数</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">記者投票の最重要ボーダーである「規定打席（443打席、20年は372打席）を超えているか」を判定するため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">平均打順 / 中軸スタメン数 / 上位スタメン数</td>
+                    <td class="py-2 px-3 font-mono">日別スタメン表の打順 (1〜9番)</td>
+                    <td class="py-2 px-3 font-mono">先発時の打順平均 ／ 3〜5番先発数 ／ 1〜2番先発数</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">チームのクリーンアップ（3〜5番）やリードオフ（1〜2番）を任されている中心選手かを数値化するため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-[var(--primary)]">長打数 / log_推定年俸</td>
+                    <td class="py-2 px-3 font-mono">二塁打, 三塁打, 本塁打 / 推定年俸</td>
+                    <td class="py-2 px-3 font-mono">二塁打 + 三塁打 + 本塁打 ／ np.log1p(推定年俸)</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">合計長打力と、年俸（数百万〜数億円の偏り）を対数圧縮して選手の知名度・実績を反映するため</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Category B2 -->
+          <div class="p-5 rounded-xl border-2 border-[var(--primary)] bg-[var(--background)] space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)]">野手レシピ ②</span>
+                <h4 class="text-sm font-bold">「打撃成績 × 守備位置スタメン重み」の掛け算特徴量（<code>pos_weighted_*</code>：6個）</h4>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded bg-orange-600 text-white font-semibold">野手モデルの最重要パーツ</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              単に「RCやOPSが高い選手」を選ぶと、「捕手で60試合・一塁で50試合出た打撃型選手」が捕手部門でも一塁部門でも1位になってしまいます。そこで<strong>「① チーム試合数の75%（143試合なら約107試合）そのポジションで先発していれば満額（1.0〜1.1倍）、少なければ比例割引」×「② 本人の全スタメンに占めるそのポジションの専任率」</strong>という2つの重みを掛け合わせた特徴量を自作しました。
+            </p>
+            <div class="p-3.5 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-xs space-y-1.5 overflow-x-auto">
+              <div class="text-[var(--muted-foreground)]"># 1. チーム試合数75%基準の充足係数（上限1.10〜1.15で頭打ちにしてフル出場選手を評価）</div>
+              <div>team_factor_110 = np.clip(pos_starts / (team_games * 0.75), 0.0, 1.10)</div>
+              <div>pos_weight_soft = np.clip(pos_starts / (team_games * 0.75), 0.0, 1.15) * (0.3 + 0.7 * pos_starts_share_player)</div>
+              <div class="pt-1 text-[var(--muted-foreground)]"># 2. 6つの主要打撃指標に掛け合わせて「その守備位置での実効打撃価値」を算出</div>
+              <div><strong class="text-[var(--primary)]">pos_weighted_RC</strong>  = RC   * team_factor_110 * pos_starts_share_player</div>
+              <div><strong class="text-[var(--primary)]">pos_weighted_H</strong>   = 安打 * team_factor_110 * pos_starts_share_player</div>
+              <div><strong class="text-[var(--primary)]">pos_weighted_OPS</strong> = OPS  * pos_weight_soft</div>
+              <div><strong class="text-[var(--primary)]">pos_weighted_AVG</strong> = 打率 * pos_weight_soft</div>
+              <div><strong class="text-[var(--primary)]">pos_weighted_HR</strong>  = 本塁打 * pos_starts_share_player</div>
+              <div><strong class="text-[var(--primary)]">pos_weighted_RBI</strong> = 打点   * pos_starts_share_player</div>
+            </div>
+          </div>
+
+          <!-- Category B3 -->
+          <div class="p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)]">野手レシピ ③</span>
+                <h4 class="text-sm font-bold">ポジション内の「ライバル比較・当落線差・Zスコア」特徴量（62個）</h4>
+              </div>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">groupby(["year", "league", "position"]) で算出</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              同じ「RC 65点・OPS .740」でも、<strong>捕手ならリーグ1位で圧勝当選、一塁手や外野手なら4位以下で落選</strong>します。そこで「同じ年・同じリーグ・同じポジション」の選手をグループ化し、16種類の指標（<code>pos_weighted_RC</code>, <code>RC</code>, <code>OPS</code>, <code>打率</code>, <code>本塁打</code>, <code>打点</code>, <code>安打</code>など）すべてに対して以下の<strong>5つの相対特徴量</strong>を自動生成しました。
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3.5 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-1.5">
+                <div class="font-bold text-[var(--primary)]">工夫①：まず「ポジション内レギュラー母集団（reg_mask）」を定義する</div>
+                <p class="text-[var(--muted-foreground)] leading-relaxed">
+                  1試合だけ守った控え選手まで混ぜて平均や標準偏差をとると数値が歪みます。そこで<strong>「その守備位置が本人のメイン守備位置（<code>is_primary_pos == 1</code>）かつ チーム試合の45%以上先発（<code>pos_starts_rate_team &gt;= 0.45</code>）」</strong>の選手だけを「レギュラー母集団」として抽出し、その中での順位とZスコアを計算しました。
+                </p>
+              </div>
+              <div class="p-3.5 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-1.5">
+                <div class="font-bold text-orange-500">工夫②：各指標ごとに生成した5つの相対変換式</div>
+                <ul class="font-mono space-y-1 text-[var(--muted-foreground)]">
+                  <li>1. <code>pos_rank_{指標}</code>：候補全員の中の順位</li>
+                  <li>2. <code>pos_reg_rank_{指標}</code>：レギュラー内の順位（非レギュラーは99）</li>
+                  <li>3. <code>pos_diff_top1_{指標}</code>：<code>自分の値 − 1位の値</code></li>
+                  <li>4. <code>pos_margin_cutoff_{指標}</code>：<strong>当落線差</strong>（定員K位以内なら <code>自分−(K+1)位</code>、K+1位以下なら <code>自分−K位</code>）</li>
+                  <li>5. <code>pos_z_{指標}</code>：<code>(自分 − レギュラー平均) ÷ 標準偏差</code></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category B4 & B5 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2.5">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)]">野手レシピ ④</span>
+                <h4 class="text-sm font-bold">リーグ全体の相対順位・規定到達Zスコア・打撃タイトル数（28個）</h4>
+              </div>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                ポジション横断でのリーグ全体での立ち位置を表すため、<code>groupby(["year", "league"])</code> で以下を計算しました：
+              </p>
+              <ul class="text-xs text-[var(--muted-foreground)] space-y-1 list-disc pl-4">
+                <li><strong>累積指標のリーグ順位＆トップ差</strong>：本塁打・打点・安打・得点・塁打・盗塁・RC・XR のリーグ順位（<code>lg_rank_*</code>）と1位との差（<code>lg_diff_top_*</code>）。</li>
+                <li><strong>規定打席到達者内の率指標順位＆Zスコア</strong>：規定打席到達者の中での打率・出塁率・OPS・RC27等の順位（<code>lg_qual_rank_*</code>、未到達は99）とZスコア（<code>lg_z_qual_*</code>）。</li>
+                <li><strong>打撃6タイトルの自動判定と合計</strong>：首位打者・本塁打王・打点王・最多安打・最高出塁率・最多盗塁の1位フラグ（<code>title_*</code>）と、その合計である <strong><code>打撃タイトル数</code>（0〜6個）</strong>。</li>
+              </ul>
+            </div>
+
+            <div class="p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2.5">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)]">野手レシピ ⑤</span>
+                <h4 class="text-sm font-bold">優勝チーム交差特徴量 ＆ ポジション定員メタ特徴量（6個）</h4>
+              </div>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                「同じくらいの成績なら優勝チームの選手が選ばれやすい」という傾向と、外野手だけ3枠あるというルールをモデルに直接教える特徴量です：
+              </p>
+              <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-xs space-y-1">
+                <div>・<code>OPS_x_優勝 = OPS * is_champion</code>（優勝球団のみOPSがそのまま入り、他球団は0になる交差項）</div>
+                <div>・<code>RC_x_優勝 = RC * is_champion</code>（優勝球団のみRCが入る交差項）</div>
+                <div>・<code>slots_available</code>：外野手なら <code>3</code>、それ以外は <code>1</code></div>
+                <div>・<code>is_outfield</code>：外野手なら <code>1</code>、それ以外は <code>0</code></div>
+                <div>・<code>position_id</code>：0(捕)〜6(DH) のカテゴリ変数</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PITCHER CUSTOM FEATURES PANEL -->
+        <div id="cf-panel-pitcher" class="hidden space-y-4">
+          <!-- Category P1 -->
+          <div class="p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">投手レシピ ①</span>
+                <h4 class="text-sm font-bold">なぜ「勝利」と「敗北」があるのに「貯金」を作るのか？基礎加工特徴量（7個）</h4>
+              </div>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">元データ：投手成績表 × 日別スタメン表（スタメン_投手）</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              決定木は1回の分岐で1つの変数しか見られないため、「14勝5敗（貯金9）」と「14勝12敗（貯金2）」を区別するのに何段も枝を使ってしまいます。そこで最初から引き算・割り算した特徴量を作成しました。また、データFreakの投手成績表には「試合数（登板数）」しかなく「先発数」がないため、日別スタメン表から先発登板数を復元しています。
+            </p>
+            <div class="overflow-x-auto border border-[var(--border)] rounded-lg">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                  <tr>
+                    <th class="py-2 px-3">作成した特徴量名</th>
+                    <th class="py-2 px-3">具体的な計算式（Python / 数式）</th>
+                    <th class="py-2 px-3">なぜこの特徴量を作ったのか？（モデルでの役割）</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border)] bg-[var(--card)]">
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-blue-500">貯金 （重要度3位：10.8%）</td>
+                    <td class="py-2 px-3 font-mono">勝利 − 敗北</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">ベストナイン投手は全員が大きな勝ち越し（貯金+7〜+15）を作っているため、勝敗差を1変数で直接表現</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-blue-500">先発数 / 先発比率</td>
+                    <td class="py-2 px-3 font-mono">先発数 = スタメン_投手<br/>先発比率 = 先発数 / 試合</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">50試合登板のリリーフ投手（先発比率 0.0）と、25試合すべて先発のエース（先発比率 1.0）を瞬時に見分けるため</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-blue-500">規定投球回到達 / 充足率</td>
+                    <td class="py-2 px-3 font-mono">投球回 &gt;= team_games なら 1<br/>充足率 = 投球回 / team_games</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">投球回（<code>.1=1/3, .2=2/3</code> 変換済）がチーム試合数（143回、20年は120回）に達しているかを判定</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 px-3 font-mono font-bold text-blue-500">QS相当指標</td>
+                    <td class="py-2 px-3 font-mono">投球回 / np.maximum(先発数, 1)</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">1先発あたりの平均投球回（6.5〜7.5回なら長いイニングを投げる本格派エース）を表すため</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Category P2 & P3 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-5 rounded-xl border-2 border-blue-500 bg-[var(--background)] space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">投手レシピ ②</span>
+                <span class="text-xs font-bold text-blue-500">投手モデル重要度 1位（24.5%）</span>
+              </div>
+              <h4 class="text-sm font-bold">NPB規定を忠実に再現した「先発主要4タイトル数（<code>主要タイトル数_先発</code>）」</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                その年の各リーグ内でタイトル獲得者を自動判定し、先発4大タイトルの合計個数（0〜4個）を計算しました。特に「最高勝率」は単なる勝率1位ではなく、<strong>NPB表彰規定通り「13勝以上（<code>勝利 &gt;= 13</code>）の中で勝率1位」</strong>という条件を組み込んでいます。
+              </p>
+              <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-xs space-y-1">
+                <div>title_最多勝 = (lg_rank_勝利 == 1)</div>
+                <div>title_最優秀防御率 = (lg_qual_rank_防御率 == 1)</div>
+                <div>title_最多奪三振 = (lg_rank_奪三振 == 1)</div>
+                <div>title_最高勝率 = (勝利 &gt;= 13) かつ その中で勝率1位</div>
+                <div class="pt-1 font-bold text-blue-500">主要タイトル数_先発 = 上記4タイトルの合計 (0〜4)</div>
+              </div>
+            </div>
+
+            <div class="p-5 rounded-xl border-2 border-blue-500 bg-[var(--background)] space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">投手レシピ ③</span>
+                <span class="text-xs font-bold text-blue-500">投手モデル重要度 2位（21.5%）＆ 4位（10.1%）</span>
+              </div>
+              <h4 class="text-sm font-bold">「最多勝に対する勝利数比（<code>lg_ratio_top_勝利</code>）」と「<code>先発勝利インパクト</code>」</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                最多勝が13勝の年の「12勝」と、最多勝が18勝の年の「12勝」では価値がまったく異なります。そこで<strong>「その年の最多勝投手の何割の勝ち星を挙げているか（0.0〜1.0）」</strong>を計算したところ、重要度2位の決定的な特徴量になりました。さらに規定到達・勝ち星・貯金・防御率を1式に統合した複合指標も作成しました。
+              </p>
+              <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-xs space-y-1.5">
+                <div><strong class="text-blue-500">lg_ratio_top_勝利</strong> = 自分の勝利数 / リーグ最多勝の勝利数</div>
+                <div><strong class="text-blue-500">先発勝利インパクト</strong> = (勝利×1.5 + 貯金×1.0 − 防御率×3.0) × 規定投球回到達</div>
+                <div><strong class="text-blue-500">勝利_x_優勝</strong> = 勝利 × is_champion</div>
+                <div><strong class="text-blue-500">貯金_x_チーム勝率</strong> = 貯金 × team_win_pct</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Interactive Before/After Feature Transformation Inspector -->
+      <div class="bg-[var(--card)] border-2 border-[var(--primary)] rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-base font-bold">🔄 実データ変換ビューア：「生の成績表（Before）」→「自作特徴量（After）」の変換実例</h3>
+            <p class="text-xs text-[var(--muted-foreground)] mt-0.5">
+              選手ボタンをクリックすると、「プロ野球データFreakの元の数字」から「実際にプログラムが計算した自作特徴量の数値」へどのように変換されたかを具体的な計算式つきで確認できます。
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button onclick="selectTransformPlayer('sato_teru_2026')" id="tf-btn-sato_teru_2026" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer transition">
+            ① 佐藤輝明 (2026年セ三塁・独走1位)
+          </button>
+          <button onclick="selectTransformPlayer('yamamoto_vs_sakakura_2024')" id="tf-btn-yamamoto_vs_sakakura_2024" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition">
+            ② 山本祐大 vs 坂倉将吾 (2024年セ捕手・専任重み付けの威力)
+          </button>
+          <button onclick="selectTransformPlayer('shuto_2026_of')" id="tf-btn-shuto_2026_of" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition">
+            ③ 周東佑京 (2026年パ外野・3枠目の当落線差)
+          </button>
+          <button onclick="selectTransformPlayer('takahashi_haruto_2026')" id="tf-btn-takahashi_haruto_2026" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition">
+            ④ 髙橋遥人 (2026年セ投手・投手自作特徴量)
+          </button>
+        </div>
+
+        <div id="tf-viewer-content" class="space-y-3 pt-1"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         TAB 5: How Predictions Are Made from Features
          ========================================== -->
     <section id="tab-infer" class="tab-panel hidden space-y-6">
       <!-- 1. 4-Step Pipeline Overview -->
@@ -1447,9 +1807,121 @@
       `).join('');
     }
 
+    function switchCustomFeatGroup(group) {
+      const btnBat = document.getElementById('cf-btn-batter');
+      const btnPit = document.getElementById('cf-btn-pitcher');
+      const panBat = document.getElementById('cf-panel-batter');
+      const panPit = document.getElementById('cf-panel-pitcher');
+      if (group === 'batter') {
+        btnBat.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer transition";
+        btnPit.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition";
+        panBat.classList.remove('hidden');
+        panPit.classList.add('hidden');
+      } else {
+        btnPit.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white cursor-pointer transition";
+        btnBat.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition";
+        panPit.classList.remove('hidden');
+        panBat.classList.add('hidden');
+      }
+    }
+
+    const transformPlayerData = {
+      "sato_teru_2026": {
+        title: "2026年 阪神・佐藤 輝明（セ・三塁手）の「元データ → 自作特徴量」変換プロセス",
+        summary: "生の成績表にある「RC = 120.89」と日別スタメン表の「三塁先発 = 125試合」から、モデル重要度1位の「重み付きRCの当落線差 (+82.77)」が作られるまでの5ステップです。",
+        rows: [
+          ["① 守備位置スタメン比率 (pos_starts_rate_team)", "三塁スタメン 125試合, チーム143試合", "125 ÷ 143", "0.874 (87.4%先発)"],
+          ["② 本人内の三塁専任率 (pos_starts_share_player)", "三塁スタメン 125試合, 総スタメン 125試合", "125 ÷ 125", "1.000 (専任100%)"],
+          ["③ 守備位置重み付きRC (pos_weighted_RC)", "素のRC = 120.89, 75%充足係数 = 1.10(上限)", "120.89 × clip(125/(143×0.75), 0, 1.10) × 1.00", "132.98 (満額+10%評価)"],
+          ["④ 重み付きRCの当落線差 (pos_margin_cutoff_pos_weighted_RC)", "自分(1位) = 132.98, セ三塁2位 = 50.21", "132.98 − 50.21 (1枠部門なので2位との差)", "+82.77 (圧倒的独走！)"],
+          ["⑤ ポジション内Zスコア (pos_z_pos_weighted_RC)", "自分 = 132.98, セ三塁レギュラー平均・標準偏差", "(132.98 − 平均) ÷ 標準偏差", "+1.49 (三塁手内トップ)"],
+          ["⑥ 優勝交差特徴量 (RC_x_優勝)", "素のRC = 120.89, 優勝フラグ is_champion = 1", "120.89 × 1", "120.89 (優勝ブースト発動)"]
+        ]
+      },
+      "yamamoto_vs_sakakura_2024": {
+        title: "2024年 セ・捕手：山本 祐大 (DeNA) vs 坂倉 将吾 (広島) — なぜ「素のRC」が逆転するのか？",
+        summary: "素の打撃成績（RC・OPS）は坂倉選手が上でしたが、自作特徴量「pos_weighted_RC」に変換することで、捕手専任の山本選手が1位に逆転し、実際の記者投票（山本251票で受賞）と完全一致した代表例です。",
+        rows: [
+          ["① 素のRC（元データ）", "坂倉：RC 63.48 (OPS .740) ／ 山本：RC 53.75 (OPS .723)", "データFreakの総合指標そのまま", "生データでは坂倉が +9.73点リード"],
+          ["② 日別スタメン表から集計した守備内訳", "坂倉：捕手69試合・一塁45試合 ／ 山本：捕手106試合・他0試合", "lineup/{team}-pos.html を全試合集計", "坂倉は兼任、山本は捕手専任と判明！"],
+          ["③ 本人内の捕手専任率 (pos_starts_share_player)", "坂倉：69 ÷ 114試合 ／ 山本：106 ÷ 106試合", "捕手スタメン ÷ 総スタメン", "坂倉：0.605 (60.5%) vs 山本：1.000 (100%)"],
+          ["④ チーム75%基準充足率", "坂倉：69 ÷ 107.25 ／ 山本：106 ÷ 107.25", "clip(pos_starts / (143×0.75), 0, 1.10)", "坂倉：0.643 vs 山本：0.988"],
+          ["⑤ 自作特徴量：重み付きRC (pos_weighted_RC)", "素のRC × ④充足率 × ③専任率", "坂倉: 63.48×0.643×0.605 ／ 山本: 53.75×0.988×1.0", "山本 53.12 ＞ 坂倉 24.71（大逆転！）"],
+          ["⑥ 自作特徴量：当落線差 (pos_margin_cutoff)", "セ捕手1位(山本 53.12) と 2位との差", "山本はプラス値、坂倉はマイナス値に変換", "山本がモデル予測1位となり実投票でも圧勝当選！"]
+        ]
+      },
+      "shuto_2026_of": {
+        title: "2026年 パ・外野手：周東 佑京 (ソフトバンク) — 定員3枠の「3位と4位の当落線差」の作り方",
+        summary: "外野手は上位3名が当選するため、プログラムは自動的に「k_target = 3」に切り替え、3位と4位の境界線を基準に当落線差を計算します。",
+        rows: [
+          ["① 外野手定員の設定 (slots_available)", "position == '外野手'", "外野手なら 3、それ以外は 1", "k_target = 3 (上位3名が当選圏)"],
+          ["② 外野スタメン重み付きRC (pos_weighted_RC)", "素のRC = 66.18, 外野スタメン 124試合 (専任100%)", "66.18 × 1.10(上限) × 1.00", "72.80 (パ外野手レギュラー中 3位)"],
+          ["③ 当落線差 (pos_margin_cutoff_pos_weighted_RC)", "3位 周東(72.80) vs 4位 外野手(70.93)", "上位3名以内なので「自分の値 − 4位の値」", "+1.87 (当落線ギリギリのプラス圏！)"],
+          ["④ 打撃タイトル数 (打撃タイトル数)", "title_最多盗塁 == 1", "6大打撃タイトルの合計", "1個 (盗塁王)"],
+          ["⑤ チーム優勝フラグ (is_champion)", "ソフトバンク 2026年順位 = 1位", "team_rank == 1 なら 1", "1 (接戦の3枠目で優勝＋タイトルが決め手に)"]
+        ]
+      },
+      "takahashi_haruto_2026": {
+        title: "2026年 セ・投手：髙橋 遥人 (阪神) — 投手の自作特徴量（タイトル数・最多勝比・インパクト）",
+        summary: "投手モデル（深さ2）で重要度上位を占める4つの自作特徴量がどのように計算されているかの実例です。",
+        rows: [
+          ["① 貯金 (重要度3位：10.8%)", "勝利 = 16, 敗北 = 3", "16 − 3", "+13 (リーグトップの勝ち越し)"],
+          ["② リーグ最多勝に対する比率 (lg_ratio_top_勝利・重要度2位)", "自分の勝利 = 16, セ最多勝 = 16", "16 ÷ 16", "1.000 (最多勝トップ)"],
+          ["③ 先発主要4タイトル数 (主要タイトル数_先発・重要度1位)", "最多勝(1) + 最優秀防御率(0:2位) + 奪三振(0) + 最高勝率(1:13勝以上1位)", "1 + 0 + 0 + 1", "2個 (最多勝＆最高勝率の二冠)"],
+          ["④ 先発勝利インパクト (重要度4位：10.1%)", "勝利16, 貯金+13, 防御率1.87, 規定到達=1 (159回≥143)", "(16×1.5 + 13×1.0 − 1.87×3.0) × 1", "31.39 (リーグ1位の総合先発スコア)"],
+          ["⑤ 勝利×優勝交差項 (勝利_x_優勝)", "勝利 = 16, 阪神優勝 (is_champion = 1)", "16 × 1", "16 (優勝チームのエースを直接表現)"]
+        ]
+      }
+    };
+
+    function selectTransformPlayer(key) {
+      const d = transformPlayerData[key];
+      if (!d) return;
+      Object.keys(transformPlayerData).forEach(k => {
+        const b = document.getElementById('tf-btn-' + k);
+        if (!b) return;
+        if (k === key) {
+          b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer transition";
+        } else {
+          b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer transition";
+        }
+      });
+
+      const box = document.getElementById('tf-viewer-content');
+      box.innerHTML = `
+        <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2">
+          <div class="text-sm font-bold text-[var(--primary)]">${d.title}</div>
+          <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">${d.summary}</p>
+          <div class="overflow-x-auto border border-[var(--border)] rounded-lg mt-2">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                <tr>
+                  <th class="py-2 px-3">ステップ・自作特徴量</th>
+                  <th class="py-2 px-3">入力された元データ（Before）</th>
+                  <th class="py-2 px-3">プログラム内の計算式</th>
+                  <th class="py-2 px-3">算出された特徴量値（After）</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border)] bg-[var(--card)] font-mono">
+                ${d.rows.map(r => `
+                  <tr>
+                    <td class="py-2 px-3 font-sans font-bold">${r[0]}</td>
+                    <td class="py-2 px-3 text-[var(--muted-foreground)]">${r[1]}</td>
+                    <td class="py-2 px-3">${r[2]}</td>
+                    <td class="py-2 px-3 font-bold text-[var(--primary)]">${r[3]}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
     // Initialize default state
     showSeasonTable('2025');
     calcPosWeight();
+    selectTransformPlayer('sato_teru_2026');
     selectInferCase('sato_2026');
     filterErrorCards('all');
   </script>
