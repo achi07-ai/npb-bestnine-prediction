@@ -465,6 +465,151 @@ def predict_batter_lgbm(models, df_target, weights=(0.15, 0.55, 0.30)):
     return score, prob, vshare, rank_prob
 
 
+POS_GROUPS = {
+    "捕手": ["捕手"],
+    "二遊間": ["二塁手", "遊撃手"],
+    "コーナー・DH": ["一塁手", "三塁手", "指名打者"],
+    "外野手": ["外野手"],
+}
+
+POS_GROUP_ALPHAS = {
+    "捕手": 0.20,
+    "二遊間": 0.25,
+    "コーナー・DH": 0.10,
+    "外野手": 1.00,
+}
+
+POS_GROUP_WEIGHTS = {
+    "捕手": (0.20, 0.55, 0.25),
+    "二遊間": (0.05, 0.70, 0.25),
+    "コーナー・DH": (0.15, 0.55, 0.30),
+    "外野手": (0.20, 0.50, 0.30),
+}
+
+
+def train_pos_group_models(df_tr, n_est=150):
+    models = {}
+    for g_name, pos_list in POS_GROUPS.items():
+        sub = df_tr[df_tr["position"].isin(pos_list)].sort_values(["year", "league", "position"]).reset_index(drop=True)
+        X = sub[BATTER_FEATURES]
+        y_cls = sub["is_winner"]
+        y_reg = sub["vote_share"]
+        y_rank = _compute_relevance_grades(sub["is_winner"], sub["vote_share"])
+        grp = sub.groupby(["year", "league", "position"], sort=False).size().values
+
+        min_cs = 6 if g_name == "捕手" else 10
+        n_leaves = 4 if g_name in ["捕手", "二遊間"] else 6
+        max_d = 2 if g_name in ["捕手", "二遊間"] else 3
+
+        m_cls = lgb.LGBMClassifier(
+            objective="binary", learning_rate=0.03, num_leaves=n_leaves, max_depth=max_d,
+            min_child_samples=min_cs, subsample=0.8, colsample_bytree=0.75,
+            reg_alpha=1.0, reg_lambda=2.0, scale_pos_weight=3.0, n_estimators=n_est,
+            random_state=42, verbose=-1
+        )
+        m_reg = lgb.LGBMRegressor(
+            objective="regression", learning_rate=0.03, num_leaves=n_leaves, max_depth=max_d,
+            min_child_samples=min_cs, subsample=0.8, colsample_bytree=0.75,
+            reg_alpha=1.0, reg_lambda=2.0, n_estimators=n_est,
+            random_state=42, verbose=-1
+        )
+        m_rank = lgb.LGBMRanker(
+            objective="lambdarank", metric="ndcg", ndcg_eval_at=[1, 3],
+            learning_rate=0.03, num_leaves=n_leaves, max_depth=max_d,
+            min_child_samples=min_cs, subsample=0.8, colsample_bytree=0.75,
+            reg_alpha=1.0, reg_lambda=2.0, n_estimators=n_est,
+            random_state=42, verbose=-1
+        )
+        m_cls.fit(X, y_cls, categorical_feature=["position_id"])
+        m_reg.fit(X, y_reg, categorical_feature=["position_id"])
+        m_rank.fit(X, y_rank, group=grp, categorical_feature=["position_id"])
+        models[g_name] = (m_cls, m_reg, m_rank)
+    return models
+
+
+def predict_batter_hierarchical(global_models, group_models, df_target, global_weights=(0.15, 0.55, 0.30), group_alphas=None):
+    if group_alphas is None:
+        group_alphas = POS_GROUP_ALPHAS
+    s_glob, p_glob, v_glob, r_glob = predict_batter_lgbm(global_models, df_target, weights=global_weights)
+
+    score = s_glob.copy()
+    prob = p_glob.copy()
+    vshare = v_glob.copy()
+    rank_p = r_glob.copy()
+
+    for g_name, pos_list in POS_GROUPS.items():
+        mask = df_target["position"].isin(pos_list).values
+        if not mask.any():
+            continue
+        sub = df_target[mask]
+        m_cls, m_reg, m_rank = group_models[g_name]
+        X = sub[BATTER_FEATURES]
+        p_g = m_cls.predict_proba(X)[:, 1]
+        v_g = np.clip(m_reg.predict(X), 0.0, 1.0)
+        r_raw = m_rank.predict(X)
+        r_g = _normalize_rank_scores_by_group(sub, r_raw, ["year", "league", "position"])
+        wc, wr, wk = POS_GROUP_WEIGHTS[g_name]
+        s_grp = wc * p_g + wr * v_g + wk * r_g
+
+        alpha = group_alphas.get(g_name, 0.25)
+        score[mask] = (1.0 - alpha) * s_glob[mask] + alpha * s_grp
+        prob[mask] = (1.0 - alpha) * p_glob[mask] + alpha * p_g
+        vshare[mask] = (1.0 - alpha) * v_glob[mask] + alpha * v_g
+        rank_p[mask] = (1.0 - alpha) * r_glob[mask] + alpha * r_g
+
+    return score, prob, vshare, rank_p
+
+
+def compute_position_feature_importances(bat_all_11, final_group_models):
+    group_imp_dict = {}
+    group_rows = []
+    for g_name, (m_cls, m_reg, m_rank) in final_group_models.items():
+        wc, wr, wk = POS_GROUP_WEIGHTS[g_name]
+        ic = m_cls.booster_.feature_importance(importance_type="gain")
+        ir = m_reg.booster_.feature_importance(importance_type="gain")
+        ik = m_rank.booster_.feature_importance(importance_type="gain")
+        imp = (
+            wc * ic / max(ic.sum(), 1e-9)
+            + wr * ir / max(ir.sum(), 1e-9)
+            + wk * ik / max(ik.sum(), 1e-9)
+        ) * 100.0
+        df_g = pd.DataFrame({"feature": BATTER_FEATURES, "gain_pct": imp}).sort_values("gain_pct", ascending=False)
+        group_imp_dict[g_name] = df_g.head(10).to_dict("records")
+        for rank_idx, r in enumerate(df_g.head(10).to_dict("records"), 1):
+            group_rows.append({"scope": f"グループ:{g_name}", "rank": rank_idx, "feature": r["feature"], "gain_pct": round(float(r["gain_pct"]), 2)})
+
+    pos_imp_dict = {}
+    for pos in ["捕手", "一塁手", "二塁手", "三塁手", "遊撃手", "外野手", "指名打者"]:
+        sub = bat_all_11[bat_all_11["position"] == pos].sort_values(["year", "league"]).reset_index(drop=True)
+        X = sub[BATTER_FEATURES]
+        y_cls = sub["is_winner"]
+        y_reg = sub["vote_share"]
+        y_rank = _compute_relevance_grades(sub["is_winner"], sub["vote_share"])
+        grp = sub.groupby(["year", "league"], sort=False).size().values
+
+        m_cls = lgb.LGBMClassifier(objective="binary", learning_rate=0.03, num_leaves=3, max_depth=2, min_child_samples=5, subsample=0.8, colsample_bytree=0.75, reg_alpha=0.5, reg_lambda=1.5, scale_pos_weight=3.0, n_estimators=150, random_state=42, verbose=-1)
+        m_reg = lgb.LGBMRegressor(objective="regression", learning_rate=0.03, num_leaves=3, max_depth=2, min_child_samples=5, subsample=0.8, colsample_bytree=0.75, reg_alpha=0.5, reg_lambda=1.5, n_estimators=150, random_state=42, verbose=-1)
+        m_rank = lgb.LGBMRanker(objective="lambdarank", metric="ndcg", ndcg_eval_at=[1, 3], learning_rate=0.03, num_leaves=3, max_depth=2, min_child_samples=5, subsample=0.8, colsample_bytree=0.75, reg_alpha=0.5, reg_lambda=1.5, n_estimators=150, random_state=42, verbose=-1)
+
+        m_cls.fit(X, y_cls)
+        m_reg.fit(X, y_reg)
+        m_rank.fit(X, y_rank, group=grp)
+
+        ic = m_cls.booster_.feature_importance(importance_type="gain")
+        ir = m_reg.booster_.feature_importance(importance_type="gain")
+        ik = m_rank.booster_.feature_importance(importance_type="gain")
+        imp = (0.20 * ic / max(ic.sum(), 1e-9) + 0.50 * ir / max(ir.sum(), 1e-9) + 0.30 * ik / max(ik.sum(), 1e-9)) * 100.0
+        df_p = pd.DataFrame({"feature": BATTER_FEATURES, "gain_pct": imp}).sort_values("gain_pct", ascending=False)
+        pos_imp_dict[pos] = df_p.head(8).to_dict("records")
+        for rank_idx, r in enumerate(df_p.head(8).to_dict("records"), 1):
+            group_rows.append({"scope": f"個別:{pos}", "rank": rank_idx, "feature": r["feature"], "gain_pct": round(float(r["gain_pct"]), 2)})
+
+    pd.DataFrame(group_rows).to_csv(os.path.join(OUTPUT_DIR, "feature_importance_by_group.csv"), index=False, encoding="utf-8-sig")
+    with open(os.path.join(OUTPUT_DIR, "feature_importance_by_position.json"), "w", encoding="utf-8") as f:
+        json.dump({"groups": group_imp_dict, "positions": pos_imp_dict}, f, ensure_ascii=False, indent=2)
+    return group_imp_dict, pos_imp_dict
+
+
 def run_experiments():
     df_pit = pd.read_csv(os.path.join(PROCESSED_DIR, "features_pitchers.csv"))
     df_bat = pd.read_csv(os.path.join(PROCESSED_DIR, "features_batters.csv"))
@@ -482,26 +627,28 @@ def run_experiments():
     bat_te = df_bat[df_bat["year"].between(2024, 2025)].copy()
 
     pit_models = train_pitcher_lgbm(pit_tr, pit_va)
-    bat_models = train_batter_lgbm(bat_tr, bat_va)
+    bat_models = train_batter_lgbm(bat_tr, pit_va if False else bat_va)
+    bat_group_models_7yr = train_pos_group_models(bat_tr, n_est=130)
 
     # 3-Model Ensemble weights: (Classifier, Regressor, LambdaRanker)
     best_weights_pit = (0.75, 0.00, 0.25)
     best_weights_bat = (0.15, 0.55, 0.30)
     print(f"3-Model Ensemble weights: Pitcher={best_weights_pit}, Batter={best_weights_bat}")
+    print(f"Position-Group Blend Alphas: {POS_GROUP_ALPHAS}")
 
     pit_tr["pred_score"], pit_tr["pred_prob"], pit_tr["pred_vshare"], pit_tr["pred_rank"] = predict_pitcher_lgbm(pit_models, pit_tr, weights=best_weights_pit)
-    bat_tr["pred_score"], bat_tr["pred_prob"], bat_tr["pred_vshare"], bat_tr["pred_rank"] = predict_batter_lgbm(bat_models, bat_tr, weights=best_weights_bat)
+    bat_tr["pred_score"], bat_tr["pred_prob"], bat_tr["pred_vshare"], bat_tr["pred_rank"] = predict_batter_hierarchical(bat_models, bat_group_models_7yr, bat_tr, global_weights=best_weights_bat)
     m_tr, sel_tr = evaluate_predictions(pit_tr, bat_tr)
 
     pit_va["pred_score"], pit_va["pred_prob"], pit_va["pred_vshare"], pit_va["pred_rank"] = predict_pitcher_lgbm(pit_models, pit_va, weights=best_weights_pit)
-    bat_va["pred_score"], bat_va["pred_prob"], bat_va["pred_vshare"], bat_va["pred_rank"] = predict_batter_lgbm(bat_models, bat_va, weights=best_weights_bat)
+    bat_va["pred_score"], bat_va["pred_prob"], bat_va["pred_vshare"], bat_va["pred_rank"] = predict_batter_hierarchical(bat_models, bat_group_models_7yr, bat_va, global_weights=best_weights_bat)
     m_va, sel_va = evaluate_predictions(pit_va, bat_va)
 
     pit_te["pred_score"], pit_te["pred_prob"], pit_te["pred_vshare"], pit_te["pred_rank"] = predict_pitcher_lgbm(pit_models, pit_te, weights=best_weights_pit)
-    bat_te["pred_score"], bat_te["pred_prob"], bat_te["pred_vshare"], bat_te["pred_rank"] = predict_batter_lgbm(bat_models, bat_te, weights=best_weights_bat)
+    bat_te["pred_score"], bat_te["pred_prob"], bat_te["pred_vshare"], bat_te["pred_rank"] = predict_batter_hierarchical(bat_models, bat_group_models_7yr, bat_te, global_weights=best_weights_bat)
     m_te_7yr, sel_te_7yr = evaluate_predictions(pit_te, bat_te)
 
-    # Also train on 2015-2023 (Train+Val) using the best iteration found on Val, and evaluate on Test (2024-2025)
+    # Also train on 2015-2023 (Train+Val) and evaluate on Test (2024-2025)
     pit_trva = df_pit[df_pit["year"].between(2015, 2023)].copy()
     bat_trva = df_bat[df_bat["year"].between(2015, 2023)].copy()
     pit_models_9yr = train_pitcher_lgbm(
@@ -510,12 +657,14 @@ def run_experiments():
     )
     bat_models_9yr = train_batter_lgbm(
         bat_trva, None,
-        params_override={"n_estimators": max(bat_models[0].best_iteration_ or 200, 120)}
+        params_override={"n_estimators": 200}
     )
+    bat_group_models_9yr = train_pos_group_models(bat_trva, n_est=150)
+
     pit_te_9 = pit_te.copy()
     bat_te_9 = bat_te.copy()
     pit_te_9["pred_score"], pit_te_9["pred_prob"], pit_te_9["pred_vshare"], pit_te_9["pred_rank"] = predict_pitcher_lgbm(pit_models_9yr, pit_te_9, weights=best_weights_pit)
-    bat_te_9["pred_score"], bat_te_9["pred_prob"], bat_te_9["pred_vshare"], bat_te_9["pred_rank"] = predict_batter_lgbm(bat_models_9yr, bat_te_9, weights=best_weights_bat)
+    bat_te_9["pred_score"], bat_te_9["pred_prob"], bat_te_9["pred_vshare"], bat_te_9["pred_rank"] = predict_batter_hierarchical(bat_models_9yr, bat_group_models_9yr, bat_te_9, global_weights=best_weights_bat)
     m_te_9yr, sel_te_9yr = evaluate_predictions(pit_te_9, bat_te_9)
 
     print("\n=== Hold-out Evaluation Summary ===")
@@ -536,9 +685,10 @@ def run_experiments():
 
         pm_cv = train_pitcher_lgbm(p_tr_cv, None, params_override={"n_estimators": 160})
         bm_cv = train_batter_lgbm(b_tr_cv, None, params_override={"n_estimators": 200})
+        bm_grp_cv = train_pos_group_models(b_tr_cv, n_est=150)
 
         p_va_cv["pred_score"], p_va_cv["pred_prob"], p_va_cv["pred_vshare"], p_va_cv["pred_rank"] = predict_pitcher_lgbm(pm_cv, p_va_cv, weights=best_weights_pit)
-        b_va_cv["pred_score"], b_va_cv["pred_prob"], b_va_cv["pred_vshare"], b_va_cv["pred_rank"] = predict_batter_lgbm(bm_cv, b_va_cv, weights=best_weights_bat)
+        b_va_cv["pred_score"], b_va_cv["pred_prob"], b_va_cv["pred_vshare"], b_va_cv["pred_rank"] = predict_batter_hierarchical(bm_cv, bm_grp_cv, b_va_cv, global_weights=best_weights_bat)
 
         m_y, _ = evaluate_predictions(p_va_cv, b_va_cv)
         m_y["year"] = hold_y
@@ -561,12 +711,13 @@ def run_experiments():
     bat_all_11 = df_bat[df_bat["year"].between(2015, 2025)].copy()
     final_pit_models = train_pitcher_lgbm(pit_all_11, None, params_override={"n_estimators": 180})
     final_bat_models = train_batter_lgbm(bat_all_11, None, params_override={"n_estimators": 220})
+    final_group_models = train_pos_group_models(bat_all_11, n_est=160)
 
     # Predict 2026
     pit_2026 = df_pit[df_pit["year"] == 2026].copy()
     bat_2026 = df_bat[df_bat["year"] == 2026].copy()
     pit_2026["pred_score"], pit_2026["pred_prob"], pit_2026["pred_vshare"], pit_2026["pred_rank"] = predict_pitcher_lgbm(final_pit_models, pit_2026, weights=best_weights_pit)
-    bat_2026["pred_score"], bat_2026["pred_prob"], bat_2026["pred_vshare"], bat_2026["pred_rank"] = predict_batter_lgbm(final_bat_models, bat_2026, weights=best_weights_bat)
+    bat_2026["pred_score"], bat_2026["pred_prob"], bat_2026["pred_vshare"], bat_2026["pred_rank"] = predict_batter_hierarchical(final_bat_models, final_group_models, bat_2026, global_weights=best_weights_bat)
 
     sel_2026_ce = select_best_nine_for_league_year(pit_2026[pit_2026["league"] == "CE"], bat_2026[bat_2026["league"] == "CE"])
     sel_2026_pa = select_best_nine_for_league_year(pit_2026[pit_2026["league"] == "PA"], bat_2026[bat_2026["league"] == "PA"])
@@ -608,6 +759,8 @@ def run_experiments():
     bat_imp = bat_imp.sort_values("importance_norm", ascending=False)
     bat_imp.to_csv(os.path.join(OUTPUT_DIR, "feature_importance_batter.csv"), index=False, encoding="utf-8-sig")
 
+    group_imp_dict, pos_imp_dict = compute_position_feature_importances(bat_all_11, final_group_models)
+
     print("\nTop 12 Pitcher Features (Gain %):")
     print(pit_imp[["feature", "importance_norm"]].head(12).to_string(index=False))
 
@@ -623,6 +776,7 @@ def run_experiments():
         "oof_2015_2025": m_oof,
         "best_weights_pit": list(best_weights_pit),
         "best_weights_bat": list(best_weights_bat),
+        "pos_group_alphas": POS_GROUP_ALPHAS,
     }
     with open(os.path.join(OUTPUT_DIR, "metrics_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)

@@ -11,38 +11,38 @@
     "batter_hits": 116,
     "batter_slots": 119,
     "batter_accuracy": 0.9747899159663865,
-    "batter_roc_auc": 0.99933689401155,
-    "batter_pr_auc": 0.9890273663152365
+    "batter_roc_auc": 0.9995137222751367,
+    "batter_pr_auc": 0.9918205911864111
   },
   "val_2022_2023": {
-    "total_hits": 27,
+    "total_hits": 28,
     "total_slots": 38,
-    "exact_match_rate": 0.7105263157894737,
+    "exact_match_rate": 0.7368421052631579,
     "pitcher_hits": 4,
     "pitcher_slots": 4,
     "pitcher_accuracy": 1.0,
     "pitcher_roc_auc": 1.0,
     "pitcher_pr_auc": 1.0,
-    "batter_hits": 23,
+    "batter_hits": 24,
     "batter_slots": 34,
-    "batter_accuracy": 0.6764705882352942,
-    "batter_roc_auc": 0.9881328438487151,
-    "batter_pr_auc": 0.8191053734142062
+    "batter_accuracy": 0.7058823529411765,
+    "batter_roc_auc": 0.983650644582942,
+    "batter_pr_auc": 0.8017153179801052
   },
   "test_2024_2025_7yr_train": {
-    "total_hits": 31,
+    "total_hits": 30,
     "total_slots": 38,
-    "exact_match_rate": 0.8157894736842105,
+    "exact_match_rate": 0.7894736842105263,
     "pitcher_hits": 3,
     "pitcher_slots": 4,
     "pitcher_accuracy": 0.75,
     "pitcher_roc_auc": 0.9982319660537482,
     "pitcher_pr_auc": 0.8611111111111112,
-    "batter_hits": 28,
+    "batter_hits": 27,
     "batter_slots": 34,
-    "batter_accuracy": 0.8235294117647058,
-    "batter_roc_auc": 0.9952660646971158,
-    "batter_pr_auc": 0.9069302526616188
+    "batter_accuracy": 0.7941176470588235,
+    "batter_roc_auc": 0.9927237661085297,
+    "batter_pr_auc": 0.8884229895792468
   },
   "test_2024_2025_9yr_train": {
     "total_hits": 32,
@@ -56,23 +56,23 @@
     "batter_hits": 29,
     "batter_slots": 34,
     "batter_accuracy": 0.8529411764705882,
-    "batter_roc_auc": 0.9957920575085474,
-    "batter_pr_auc": 0.9240093576025823
+    "batter_roc_auc": 0.9951345664942579,
+    "batter_pr_auc": 0.9154435177886657
   },
   "oof_2015_2025": {
-    "total_hits": 165,
+    "total_hits": 168,
     "total_slots": 209,
-    "exact_match_rate": 0.7894736842105263,
+    "exact_match_rate": 0.8038277511961722,
     "pitcher_hits": 17,
     "pitcher_slots": 22,
     "pitcher_accuracy": 0.7727272727272727,
     "pitcher_roc_auc": 0.9977339376166355,
     "pitcher_pr_auc": 0.7953648612537414,
-    "batter_hits": 148,
+    "batter_hits": 151,
     "batter_slots": 187,
-    "batter_accuracy": 0.7914438502673797,
-    "batter_roc_auc": 0.992262957183611,
-    "batter_pr_auc": 0.8937517572424993
+    "batter_accuracy": 0.8074866310160428,
+    "batter_roc_auc": 0.9917391998289266,
+    "batter_pr_auc": 0.8916521538706006
   },
   "best_weights_pit": [
     0.75,
@@ -83,5 +83,11 @@
     0.15,
     0.55,
     0.3
-  ]
+  ],
+  "pos_group_alphas": {
+    "捕手": 0.2,
+    "二遊間": 0.25,
+    "コーナー・DH": 0.1,
+    "外野手": 1.0
+  }
 }

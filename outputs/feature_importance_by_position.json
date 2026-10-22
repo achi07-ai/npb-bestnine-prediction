@@ -1,0 +1,412 @@
+{
+  "groups": {
+    "捕手": [
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 22.234543286506938
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 21.188595753637124
+      },
+      {
+        "feature": "team_win_pct",
+        "gain_pct": 8.148627254457349
+      },
+      {
+        "feature": "RC_x_優勝",
+        "gain_pct": 6.990878194161552
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RC",
+        "gain_pct": 6.281276851619939
+      },
+      {
+        "feature": "pos_reg_rank_安打",
+        "gain_pct": 4.506573930524977
+      },
+      {
+        "feature": "スタメン_総数",
+        "gain_pct": 3.9574759882280715
+      },
+      {
+        "feature": "pos_rank_pos_weighted_RBI",
+        "gain_pct": 2.662730765327825
+      },
+      {
+        "feature": "スタメン出場率",
+        "gain_pct": 2.149820358092919
+      },
+      {
+        "feature": "pos_rank_安打",
+        "gain_pct": 1.7277801592257807
+      }
+    ],
+    "二遊間": [
+      {
+        "feature": "pos_reg_rank_RC",
+        "gain_pct": 24.832096097801827
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 19.323240726823624
+      },
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 10.000960753907272
+      },
+      {
+        "feature": "pos_z_安打",
+        "gain_pct": 9.840414023417882
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_AVG",
+        "gain_pct": 9.220484061212929
+      },
+      {
+        "feature": "pos_reg_rank_安打",
+        "gain_pct": 6.357661472751362
+      },
+      {
+        "feature": "lg_qual_rank_打率",
+        "gain_pct": 2.0011084613175054
+      },
+      {
+        "feature": "pos_diff_top1_RC",
+        "gain_pct": 1.455470271356283
+      },
+      {
+        "feature": "pos_margin_cutoff_RC",
+        "gain_pct": 1.1804603808608019
+      },
+      {
+        "feature": "pos_rank_RC",
+        "gain_pct": 1.0965520097011718
+      }
+    ],
+    "コーナー・DH": [
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 22.475946634521176
+      },
+      {
+        "feature": "pos_reg_rank_RC",
+        "gain_pct": 16.42142085976577
+      },
+      {
+        "feature": "pos_reg_rank_安打",
+        "gain_pct": 10.056721146296399
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RBI",
+        "gain_pct": 4.849321180013969
+      },
+      {
+        "feature": "pos_weighted_RC",
+        "gain_pct": 4.600066828406954
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RC",
+        "gain_pct": 3.9902638958022485
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 3.293705713370111
+      },
+      {
+        "feature": "pos_diff_top1_RC",
+        "gain_pct": 2.7662923790996166
+      },
+      {
+        "feature": "pos_reg_rank_打席数",
+        "gain_pct": 2.0519140201806065
+      },
+      {
+        "feature": "pos_diff_top1_打点",
+        "gain_pct": 1.9950911201978032
+      }
+    ],
+    "外野手": [
+      {
+        "feature": "pos_reg_rank_RC",
+        "gain_pct": 50.54215141915424
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 8.077843041517923
+      },
+      {
+        "feature": "pos_margin_cutoff_RC",
+        "gain_pct": 5.1366845091071935
+      },
+      {
+        "feature": "lg_qual_rank_打率",
+        "gain_pct": 4.60593189216562
+      },
+      {
+        "feature": "pos_rank_RC",
+        "gain_pct": 3.7134125233849504
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RC",
+        "gain_pct": 3.067196365971375
+      },
+      {
+        "feature": "pos_diff_top1_安打",
+        "gain_pct": 3.051334426484463
+      },
+      {
+        "feature": "打撃タイトル数",
+        "gain_pct": 3.0082862467795914
+      },
+      {
+        "feature": "pos_margin_cutoff_打率",
+        "gain_pct": 1.5934540066040386
+      },
+      {
+        "feature": "pos_z_安打",
+        "gain_pct": 1.3776928760528346
+      }
+    ]
+  },
+  "positions": {
+    "捕手": [
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 17.947391881212244
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 16.707213431794724
+      },
+      {
+        "feature": "RC_x_優勝",
+        "gain_pct": 9.600224993976072
+      },
+      {
+        "feature": "team_win_pct",
+        "gain_pct": 7.605221741419071
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RC",
+        "gain_pct": 6.923141509862081
+      },
+      {
+        "feature": "pos_rank_pos_weighted_RBI",
+        "gain_pct": 4.831052891207391
+      },
+      {
+        "feature": "スタメン_総数",
+        "gain_pct": 3.6444130160639543
+      },
+      {
+        "feature": "pos_reg_rank_安打",
+        "gain_pct": 3.1810006690630317
+      }
+    ],
+    "一塁手": [
+      {
+        "feature": "pos_rank_pos_weighted_RBI",
+        "gain_pct": 13.800823880637642
+      },
+      {
+        "feature": "pos_reg_rank_OPS",
+        "gain_pct": 12.339130546708425
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RBI",
+        "gain_pct": 9.56203999459561
+      },
+      {
+        "feature": "pos_reg_rank_打点",
+        "gain_pct": 7.046134822794209
+      },
+      {
+        "feature": "pos_diff_top1_打点",
+        "gain_pct": 5.381724280839319
+      },
+      {
+        "feature": "pos_margin_cutoff_RC",
+        "gain_pct": 5.230285600041491
+      },
+      {
+        "feature": "pos_diff_top1_RC",
+        "gain_pct": 4.826821287994968
+      },
+      {
+        "feature": "pos_reg_rank_pos_weighted_RBI",
+        "gain_pct": 4.427869492076854
+      }
+    ],
+    "二塁手": [
+      {
+        "feature": "pos_reg_rank_RC",
+        "gain_pct": 16.810637206995597
+      },
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 9.77249023268361
+      },
+      {
+        "feature": "pos_z_安打",
+        "gain_pct": 9.438686711967497
+      },
+      {
+        "feature": "pos_reg_rank_安打",
+        "gain_pct": 7.825983845332228
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RBI",
+        "gain_pct": 7.523046560312498
+      },
+      {
+        "feature": "pos_margin_cutoff_RC",
+        "gain_pct": 6.717175392043137
+      },
+      {
+        "feature": "pos_diff_top1_RC",
+        "gain_pct": 6.287260569758686
+      },
+      {
+        "feature": "pos_margin_cutoff_打席数",
+        "gain_pct": 4.873375521969191
+      }
+    ],
+    "三塁手": [
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 31.627721237741234
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RC",
+        "gain_pct": 8.966442176421433
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_H",
+        "gain_pct": 6.97516363638243
+      },
+      {
+        "feature": "pos_rank_pos_weighted_OPS",
+        "gain_pct": 6.381733720441808
+      },
+      {
+        "feature": "pos_reg_rank_pos_weighted_OPS",
+        "gain_pct": 6.069025792552116
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 6.022733873293798
+      },
+      {
+        "feature": "pos_reg_rank_安打",
+        "gain_pct": 4.934257585529724
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_AVG",
+        "gain_pct": 2.769963372059616
+      }
+    ],
+    "遊撃手": [
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_AVG",
+        "gain_pct": 34.45772249815609
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 19.074150792605337
+      },
+      {
+        "feature": "pos_diff_top1_pos_weighted_OPS",
+        "gain_pct": 10.475848228481935
+      },
+      {
+        "feature": "pos_rank_pos_weighted_RC",
+        "gain_pct": 8.219739282473226
+      },
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 6.42885411144761
+      },
+      {
+        "feature": "pos_diff_top1_RC",
+        "gain_pct": 3.6363078667439743
+      },
+      {
+        "feature": "pos_rank_RC",
+        "gain_pct": 3.4636436445778256
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_RC",
+        "gain_pct": 2.9688253626605796
+      }
+    ],
+    "外野手": [
+      {
+        "feature": "pos_reg_rank_RC",
+        "gain_pct": 41.68966316248185
+      },
+      {
+        "feature": "lg_qual_rank_打率",
+        "gain_pct": 7.0434649305458645
+      },
+      {
+        "feature": "pos_z_pos_weighted_RC",
+        "gain_pct": 6.8090365605053025
+      },
+      {
+        "feature": "打撃タイトル数",
+        "gain_pct": 4.350082004544353
+      },
+      {
+        "feature": "pos_diff_top1_安打",
+        "gain_pct": 3.4073312116698085
+      },
+      {
+        "feature": "lg_qual_rank_RC27",
+        "gain_pct": 2.448715212217337
+      },
+      {
+        "feature": "pos_margin_cutoff_RC",
+        "gain_pct": 2.4236459269257176
+      },
+      {
+        "feature": "pos_diff_top1_pos_weighted_RC",
+        "gain_pct": 2.4184441056695682
+      }
+    ],
+    "指名打者": [
+      {
+        "feature": "pos_weighted_RC",
+        "gain_pct": 22.216632536441143
+      },
+      {
+        "feature": "pos_reg_rank_本塁打",
+        "gain_pct": 10.283492531774614
+      },
+      {
+        "feature": "pos_reg_rank_OPS",
+        "gain_pct": 10.061134241182991
+      },
+      {
+        "feature": "pos_reg_rank_打点",
+        "gain_pct": 8.781392380363986
+      },
+      {
+        "feature": "pos_diff_top1_pos_weighted_OPS",
+        "gain_pct": 3.987755742741424
+      },
+      {
+        "feature": "pos_margin_cutoff_pos_weighted_OPS",
+        "gain_pct": 3.9231604788757704
+      },
+      {
+        "feature": "pos_diff_top1_RC",
+        "gain_pct": 3.7863719108105585
+      },
+      {
+        "feature": "lg_rank_RC",
+        "gain_pct": 3.4534620928740516
+      }
+    ]
+  }
+}
