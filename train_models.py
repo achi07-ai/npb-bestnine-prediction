@@ -28,7 +28,8 @@ PITCHER_FEATURES = [
     "K/BB", "HldR", "PFR",
     # Engineered & Lineup / Bio / Standings features
     "貯金", "先発数", "先発比率", "規定投球回到達", "規定投球回充足率", "QS相当指標",
-    "年齢", "プロ年数", "log_推定年俸",
+    "年齢", "プロ年数", "log_推定年俸", "is_rookie_regular",
+    "prev_vote_share", "prev_is_winner",
     "team_rank", "team_win_pct", "team_gb", "is_champion",
     # League relative ranks & diffs
     "lg_rank_勝利", "lg_diff_top_勝利", "lg_ratio_top_勝利",
@@ -53,11 +54,13 @@ BATTER_FEATURES = [
     "打点", "盗塁", "盗塁刺", "犠打", "犠飛", "四球", "敬遠", "死球", "三振", "併殺打",
     "出塁率", "長打率", "OPS", "NOI", "GPA", "IsoP", "IsoD", "RC", "RC27", "XR", "XR27",
     "BABIP", "SecA", "TA", "四死球", "本塁打率", "三振率", "四球率", "PSN", "BB/K",
-    # Lineup / Position starts / Bio / Standings
-    "pos_starts", "pos_starts_rate_team", "pos_starts_share_player", "is_primary_pos", "diff_from_primary_starts",
+    # Lineup / Position starts / Bio / Standings / New Features
+    "pos_starts", "pos_starts_rate_team", "pos_starts_share_player", "eff_pos_share",
+    "is_primary_pos", "diff_from_primary_starts",
     "スタメン_総数", "スタメン出場率", "平均打順", "中軸スタメン数", "上位スタメン数",
     "規定打席到達", "規定打席充足率", "出場試合率", "長打数",
-    "年齢", "プロ年数", "log_推定年俸",
+    "年齢", "プロ年数", "log_推定年俸", "is_rookie", "is_rookie_regular",
+    "prev_vote_share", "prev_is_winner", "prev_any_pos_vote_share",
     "team_rank", "team_win_pct", "team_gb", "is_champion",
     # Position-weighted offensive value
     "pos_weighted_OPS", "pos_weighted_RC", "pos_weighted_HR", "pos_weighted_RBI", "pos_weighted_H", "pos_weighted_AVG",
@@ -110,24 +113,19 @@ def select_best_nine_for_league_year(df_pit_sub, df_bat_sub, score_col="pred_sco
         selected_rows.append(w_p[["year", "league", "position", "チーム", "選手名", "norm_name", score_col, "is_winner", "vote_share"]])
 
     # 2. Batters (Greedy assignment by highest predicted probability/score across positions)
-    # Single-slot positions first vs global probability sorting:
-    # Sort all (player, position) candidates by score descending, assign until each position's quota is filled
     quotas = {
         "捕手": 1, "一塁手": 1, "二塁手": 1, "三塁手": 1, "遊撃手": 1, "外野手": 3
     }
     if df_bat_sub["league"].iloc[0] == "PA":
         quotas["指名打者"] = 1
 
-    # Normalize scores within each position so single-slot and 3-slot positions are on equal footing during greedy assignment
     b_work = df_bat_sub.copy()
     b_work["pos_rank_pred"] = b_work.groupby("position")[score_col].rank(ascending=False, method="first")
-    # Priority: first fill rank 1 for 1-slot and rank 1..3 for 3-slot by score_col descending
     b_sorted = b_work.sort_values(score_col, ascending=False)
 
     used_players = set()
     pos_selected = {k: [] for k in quotas}
 
-    # Pass 1: Assign players who are within the top K of a position, ordered by score_col descending
     for _, row in b_sorted.iterrows():
         pos = row["position"]
         if pos not in quotas:
@@ -204,13 +202,55 @@ def evaluate_predictions(df_pit_eval, df_bat_eval, score_col="pred_score"):
     return metrics, df_sel
 
 
+def _compute_relevance_grades(is_winner_series, vote_share_series):
+    return np.where(
+        (is_winner_series == 1) & (vote_share_series >= 0.70), 5,
+        np.where(
+            is_winner_series == 1, 4,
+            np.where(
+                vote_share_series >= 0.30, 3,
+                np.where(
+                    vote_share_series >= 0.10, 2,
+                    np.where(vote_share_series > 0.0, 1, 0)
+                )
+            )
+        )
+    ).astype(int)
+
+
+def _normalize_rank_scores_by_group(df_target, raw_rank_preds, group_cols):
+    out = np.zeros(len(df_target), dtype=float)
+    temp_df = df_target[group_cols].copy()
+    temp_df["_idx"] = np.arange(len(df_target))
+    temp_df["_raw"] = raw_rank_preds
+    temp_df["_pos"] = df_target["position"].values
+
+    for _, g in temp_df.groupby(group_cols, sort=False):
+        idxs = g["_idx"].values
+        r_vals = g["_raw"].values
+        pos_name = g["_pos"].iloc[0]
+        k_slots = 3 if pos_name == "外野手" else 1
+        sorted_r = np.sort(r_vals)[::-1]
+        if len(sorted_r) > k_slots:
+            cutoff = 0.5 * (sorted_r[k_slots - 1] + sorted_r[k_slots])
+        elif len(sorted_r) >= 1:
+            cutoff = sorted_r[-1]
+        else:
+            cutoff = 0.0
+        out[idxs] = 1.0 / (1.0 + np.exp(-(r_vals - cutoff)))
+    return out
+
+
 def train_pitcher_lgbm(df_train, df_val=None, params_override=None):
     # Filter training pool to pitchers with >= 5 games or >= 10 IP so trivial 1-inning appearances don't add noise
     tr = df_train[(df_train["試合"] >= 5) | (df_train["投球回"] >= 10) | (df_train["is_winner"] == 1)].copy()
+    tr = tr.sort_values(["year", "league"]).reset_index(drop=True)
 
     X_tr = tr[PITCHER_FEATURES]
     y_tr_cls = tr["is_winner"]
     y_tr_reg = tr["vote_share"]
+    y_tr_rank = _compute_relevance_grades(tr["is_winner"], tr["vote_share"])
+    grp_tr = tr.groupby(["year", "league"], sort=False).size().values
 
     cls_params = {
         "objective": "binary",
@@ -244,17 +284,38 @@ def train_pitcher_lgbm(df_train, df_val=None, params_override=None):
         "colsample_bytree": 0.8,
         "reg_alpha": 0.5,
         "reg_lambda": 1.0,
-        "n_estimators": 250,
+        "n_estimators": cls_params["n_estimators"],
+        "random_state": 42,
+        "verbose": -1,
+    }
+
+    rank_params = {
+        "objective": "lambdarank",
+        "metric": "ndcg",
+        "ndcg_eval_at": [1, 3],
+        "boosting_type": "gbdt",
+        "learning_rate": 0.03,
+        "num_leaves": 3,
+        "max_depth": 2,
+        "min_child_samples": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.5,
+        "reg_lambda": 1.0,
+        "n_estimators": cls_params["n_estimators"],
         "random_state": 42,
         "verbose": -1,
     }
 
     model_cls = lgb.LGBMClassifier(**cls_params)
     model_reg = lgb.LGBMRegressor(**reg_params)
+    model_rank = lgb.LGBMRanker(**rank_params)
 
     if df_val is not None and len(df_val) > 0:
-        va = df_val.copy()
+        va = df_val.sort_values(["year", "league"]).reset_index(drop=True)
         X_va = va[PITCHER_FEATURES]
+        y_va_rank = _compute_relevance_grades(va["is_winner"], va["vote_share"])
+        grp_va = va.groupby(["year", "league"], sort=False).size().values
         model_cls.fit(
             X_tr, y_tr_cls,
             eval_set=[(X_va, va["is_winner"])],
@@ -265,26 +326,40 @@ def train_pitcher_lgbm(df_train, df_val=None, params_override=None):
             eval_set=[(X_va, va["vote_share"])],
             callbacks=[lgb.early_stopping(40, verbose=False)]
         )
+        model_rank.fit(
+            X_tr, y_tr_rank,
+            group=grp_tr,
+            eval_set=[(X_va, y_va_rank)],
+            eval_group=[grp_va],
+            callbacks=[lgb.early_stopping(40, verbose=False)]
+        )
     else:
         model_cls.fit(X_tr, y_tr_cls)
         model_reg.fit(X_tr, y_tr_reg)
+        model_rank.fit(X_tr, y_tr_rank, group=grp_tr)
 
-    return model_cls, model_reg
+    return model_cls, model_reg, model_rank
 
 
-def predict_pitcher_lgbm(models, df_target, alpha=0.5):
-    model_cls, model_reg = models
+def predict_pitcher_lgbm(models, df_target, weights=(0.75, 0.0, 0.25)):
+    model_cls, model_reg, model_rank = models
     X = df_target[PITCHER_FEATURES]
     prob = model_cls.predict_proba(X)[:, 1]
     vshare = np.clip(model_reg.predict(X), 0.0, 1.0)
-    return alpha * prob + (1.0 - alpha) * vshare, prob, vshare
+    raw_rank = model_rank.predict(X)
+    rank_prob = _normalize_rank_scores_by_group(df_target, raw_rank, ["year", "league"])
+    w_cls, w_reg, w_rank = weights
+    score = w_cls * prob + w_reg * vshare + w_rank * rank_prob
+    return score, prob, vshare, rank_prob
 
 
 def train_batter_lgbm(df_train, df_val=None, params_override=None):
-    tr = df_train.copy()
+    tr = df_train.sort_values(["year", "league", "position"]).reset_index(drop=True)
     X_tr = tr[BATTER_FEATURES]
     y_tr_cls = tr["is_winner"]
     y_tr_reg = tr["vote_share"]
+    y_tr_rank = _compute_relevance_grades(tr["is_winner"], tr["vote_share"])
+    grp_tr = tr.groupby(["year", "league", "position"], sort=False).size().values
 
     cls_params = {
         "objective": "binary",
@@ -318,17 +393,38 @@ def train_batter_lgbm(df_train, df_val=None, params_override=None):
         "colsample_bytree": 0.75,
         "reg_alpha": 1.0,
         "reg_lambda": 2.0,
-        "n_estimators": 350,
+        "n_estimators": cls_params["n_estimators"],
+        "random_state": 42,
+        "verbose": -1,
+    }
+
+    rank_params = {
+        "objective": "lambdarank",
+        "metric": "ndcg",
+        "ndcg_eval_at": [1, 3],
+        "boosting_type": "gbdt",
+        "learning_rate": 0.03,
+        "num_leaves": 7,
+        "max_depth": 3,
+        "min_child_samples": 15,
+        "subsample": 0.8,
+        "colsample_bytree": 0.75,
+        "reg_alpha": 1.0,
+        "reg_lambda": 2.0,
+        "n_estimators": cls_params["n_estimators"],
         "random_state": 42,
         "verbose": -1,
     }
 
     model_cls = lgb.LGBMClassifier(**cls_params)
     model_reg = lgb.LGBMRegressor(**reg_params)
+    model_rank = lgb.LGBMRanker(**rank_params)
 
     if df_val is not None and len(df_val) > 0:
-        va = df_val.copy()
+        va = df_val.sort_values(["year", "league", "position"]).reset_index(drop=True)
         X_va = va[BATTER_FEATURES]
+        y_va_rank = _compute_relevance_grades(va["is_winner"], va["vote_share"])
+        grp_va = va.groupby(["year", "league", "position"], sort=False).size().values
         model_cls.fit(
             X_tr, y_tr_cls,
             eval_set=[(X_va, va["is_winner"])],
@@ -341,19 +437,32 @@ def train_batter_lgbm(df_train, df_val=None, params_override=None):
             categorical_feature=["position_id"],
             callbacks=[lgb.early_stopping(40, verbose=False)]
         )
+        model_rank.fit(
+            X_tr, y_tr_rank,
+            group=grp_tr,
+            eval_set=[(X_va, y_va_rank)],
+            eval_group=[grp_va],
+            categorical_feature=["position_id"],
+            callbacks=[lgb.early_stopping(40, verbose=False)]
+        )
     else:
         model_cls.fit(X_tr, y_tr_cls, categorical_feature=["position_id"])
         model_reg.fit(X_tr, y_tr_reg, categorical_feature=["position_id"])
+        model_rank.fit(X_tr, y_tr_rank, group=grp_tr, categorical_feature=["position_id"])
 
-    return model_cls, model_reg
+    return model_cls, model_reg, model_rank
 
 
-def predict_batter_lgbm(models, df_target, alpha=0.5):
-    model_cls, model_reg = models
+def predict_batter_lgbm(models, df_target, weights=(0.15, 0.55, 0.30)):
+    model_cls, model_reg, model_rank = models
     X = df_target[BATTER_FEATURES]
     prob = model_cls.predict_proba(X)[:, 1]
     vshare = np.clip(model_reg.predict(X), 0.0, 1.0)
-    return alpha * prob + (1.0 - alpha) * vshare, prob, vshare
+    raw_rank = model_rank.predict(X)
+    rank_prob = _normalize_rank_scores_by_group(df_target, raw_rank, ["year", "league", "position"])
+    w_cls, w_reg, w_rank = weights
+    score = w_cls * prob + w_reg * vshare + w_rank * rank_prob
+    return score, prob, vshare, rank_prob
 
 
 def run_experiments():
@@ -375,25 +484,21 @@ def run_experiments():
     pit_models = train_pitcher_lgbm(pit_tr, pit_va)
     bat_models = train_batter_lgbm(bat_tr, bat_va)
 
-    # Ensemble weights tuned on Validation (2022-2023) & LOYO-CV
-    best_alpha_pit = 1.0
-    best_alpha_bat = 0.2
-    print(f"Ensemble weights: Pitcher alpha={best_alpha_pit}, Batter alpha={best_alpha_bat}")
+    # 3-Model Ensemble weights: (Classifier, Regressor, LambdaRanker)
+    best_weights_pit = (0.75, 0.00, 0.25)
+    best_weights_bat = (0.15, 0.55, 0.30)
+    print(f"3-Model Ensemble weights: Pitcher={best_weights_pit}, Batter={best_weights_bat}")
 
-    # Evaluate on Train (2015-2021), Val (2022-2023), and Test (2024-2025)
-    # Note: For evaluating Test (2024-2025), we can evaluate both:
-    # (A) Model trained on 2015-2021 (early stopped on 2022-2023)
-    # (B) Model trained on 2015-2023 (Train+Val 9 years) with optimal n_estimators from Val!
-    pit_tr["pred_score"], pit_tr["pred_prob"], pit_tr["pred_vshare"] = predict_pitcher_lgbm(pit_models, pit_tr, alpha=best_alpha_pit)
-    bat_tr["pred_score"], bat_tr["pred_prob"], bat_tr["pred_vshare"] = predict_batter_lgbm(bat_models, bat_tr, alpha=best_alpha_bat)
+    pit_tr["pred_score"], pit_tr["pred_prob"], pit_tr["pred_vshare"], pit_tr["pred_rank"] = predict_pitcher_lgbm(pit_models, pit_tr, weights=best_weights_pit)
+    bat_tr["pred_score"], bat_tr["pred_prob"], bat_tr["pred_vshare"], bat_tr["pred_rank"] = predict_batter_lgbm(bat_models, bat_tr, weights=best_weights_bat)
     m_tr, sel_tr = evaluate_predictions(pit_tr, bat_tr)
 
-    pit_va["pred_score"], pit_va["pred_prob"], pit_va["pred_vshare"] = predict_pitcher_lgbm(pit_models, pit_va, alpha=best_alpha_pit)
-    bat_va["pred_score"], bat_va["pred_prob"], bat_va["pred_vshare"] = predict_batter_lgbm(bat_models, bat_va, alpha=best_alpha_bat)
+    pit_va["pred_score"], pit_va["pred_prob"], pit_va["pred_vshare"], pit_va["pred_rank"] = predict_pitcher_lgbm(pit_models, pit_va, weights=best_weights_pit)
+    bat_va["pred_score"], bat_va["pred_prob"], bat_va["pred_vshare"], bat_va["pred_rank"] = predict_batter_lgbm(bat_models, bat_va, weights=best_weights_bat)
     m_va, sel_va = evaluate_predictions(pit_va, bat_va)
 
-    pit_te["pred_score"], pit_te["pred_prob"], pit_te["pred_vshare"] = predict_pitcher_lgbm(pit_models, pit_te, alpha=best_alpha_pit)
-    bat_te["pred_score"], bat_te["pred_prob"], bat_te["pred_vshare"] = predict_batter_lgbm(bat_models, bat_te, alpha=best_alpha_bat)
+    pit_te["pred_score"], pit_te["pred_prob"], pit_te["pred_vshare"], pit_te["pred_rank"] = predict_pitcher_lgbm(pit_models, pit_te, weights=best_weights_pit)
+    bat_te["pred_score"], bat_te["pred_prob"], bat_te["pred_vshare"], bat_te["pred_rank"] = predict_batter_lgbm(bat_models, bat_te, weights=best_weights_bat)
     m_te_7yr, sel_te_7yr = evaluate_predictions(pit_te, bat_te)
 
     # Also train on 2015-2023 (Train+Val) using the best iteration found on Val, and evaluate on Test (2024-2025)
@@ -409,8 +514,8 @@ def run_experiments():
     )
     pit_te_9 = pit_te.copy()
     bat_te_9 = bat_te.copy()
-    pit_te_9["pred_score"], pit_te_9["pred_prob"], pit_te_9["pred_vshare"] = predict_pitcher_lgbm(pit_models_9yr, pit_te_9, alpha=best_alpha_pit)
-    bat_te_9["pred_score"], bat_te_9["pred_prob"], bat_te_9["pred_vshare"] = predict_batter_lgbm(bat_models_9yr, bat_te_9, alpha=best_alpha_bat)
+    pit_te_9["pred_score"], pit_te_9["pred_prob"], pit_te_9["pred_vshare"], pit_te_9["pred_rank"] = predict_pitcher_lgbm(pit_models_9yr, pit_te_9, weights=best_weights_pit)
+    bat_te_9["pred_score"], bat_te_9["pred_prob"], bat_te_9["pred_vshare"], bat_te_9["pred_rank"] = predict_batter_lgbm(bat_models_9yr, bat_te_9, weights=best_weights_bat)
     m_te_9yr, sel_te_9yr = evaluate_predictions(pit_te_9, bat_te_9)
 
     print("\n=== Hold-out Evaluation Summary ===")
@@ -432,8 +537,8 @@ def run_experiments():
         pm_cv = train_pitcher_lgbm(p_tr_cv, None, params_override={"n_estimators": 160})
         bm_cv = train_batter_lgbm(b_tr_cv, None, params_override={"n_estimators": 200})
 
-        p_va_cv["pred_score"], p_va_cv["pred_prob"], p_va_cv["pred_vshare"] = predict_pitcher_lgbm(pm_cv, p_va_cv, alpha=best_alpha_pit)
-        b_va_cv["pred_score"], b_va_cv["pred_prob"], b_va_cv["pred_vshare"] = predict_batter_lgbm(bm_cv, b_va_cv, alpha=best_alpha_bat)
+        p_va_cv["pred_score"], p_va_cv["pred_prob"], p_va_cv["pred_vshare"], p_va_cv["pred_rank"] = predict_pitcher_lgbm(pm_cv, p_va_cv, weights=best_weights_pit)
+        b_va_cv["pred_score"], b_va_cv["pred_prob"], b_va_cv["pred_vshare"], b_va_cv["pred_rank"] = predict_batter_lgbm(bm_cv, b_va_cv, weights=best_weights_bat)
 
         m_y, _ = evaluate_predictions(p_va_cv, b_va_cv)
         m_y["year"] = hold_y
@@ -460,8 +565,8 @@ def run_experiments():
     # Predict 2026
     pit_2026 = df_pit[df_pit["year"] == 2026].copy()
     bat_2026 = df_bat[df_bat["year"] == 2026].copy()
-    pit_2026["pred_score"], pit_2026["pred_prob"], pit_2026["pred_vshare"] = predict_pitcher_lgbm(final_pit_models, pit_2026, alpha=best_alpha_pit)
-    bat_2026["pred_score"], bat_2026["pred_prob"], bat_2026["pred_vshare"] = predict_batter_lgbm(final_bat_models, bat_2026, alpha=best_alpha_bat)
+    pit_2026["pred_score"], pit_2026["pred_prob"], pit_2026["pred_vshare"], pit_2026["pred_rank"] = predict_pitcher_lgbm(final_pit_models, pit_2026, weights=best_weights_pit)
+    bat_2026["pred_score"], bat_2026["pred_prob"], bat_2026["pred_vshare"], bat_2026["pred_rank"] = predict_batter_lgbm(final_bat_models, bat_2026, weights=best_weights_bat)
 
     sel_2026_ce = select_best_nine_for_league_year(pit_2026[pit_2026["league"] == "CE"], bat_2026[bat_2026["league"] == "CE"])
     sel_2026_pa = select_best_nine_for_league_year(pit_2026[pit_2026["league"] == "PA"], bat_2026[bat_2026["league"] == "PA"])
@@ -474,15 +579,17 @@ def run_experiments():
     sel_2026.to_csv(os.path.join(OUTPUT_DIR, "predictions_2026_bonus.csv"), index=False, encoding="utf-8-sig")
     df_yearly_cv.to_csv(os.path.join(OUTPUT_DIR, "yearly_cv_metrics.csv"), index=False, encoding="utf-8-sig")
 
-    # Feature Importances (Gain)
+    # Feature Importances (Gain across Classifier, Regressor, Ranker)
     pit_imp = pd.DataFrame({
         "feature": PITCHER_FEATURES,
         "importance_cls": final_pit_models[0].booster_.feature_importance(importance_type="gain"),
         "importance_reg": final_pit_models[1].booster_.feature_importance(importance_type="gain"),
+        "importance_rank": final_pit_models[2].booster_.feature_importance(importance_type="gain"),
     })
     pit_imp["importance_norm"] = (
-        0.5 * pit_imp["importance_cls"] / pit_imp["importance_cls"].sum()
-        + 0.5 * pit_imp["importance_reg"] / pit_imp["importance_reg"].sum()
+        best_weights_pit[0] * pit_imp["importance_cls"] / np.maximum(pit_imp["importance_cls"].sum(), 1e-9)
+        + best_weights_pit[1] * pit_imp["importance_reg"] / np.maximum(pit_imp["importance_reg"].sum(), 1e-9)
+        + best_weights_pit[2] * pit_imp["importance_rank"] / np.maximum(pit_imp["importance_rank"].sum(), 1e-9)
     ) * 100
     pit_imp = pit_imp.sort_values("importance_norm", ascending=False)
     pit_imp.to_csv(os.path.join(OUTPUT_DIR, "feature_importance_pitcher.csv"), index=False, encoding="utf-8-sig")
@@ -491,10 +598,12 @@ def run_experiments():
         "feature": BATTER_FEATURES,
         "importance_cls": final_bat_models[0].booster_.feature_importance(importance_type="gain"),
         "importance_reg": final_bat_models[1].booster_.feature_importance(importance_type="gain"),
+        "importance_rank": final_bat_models[2].booster_.feature_importance(importance_type="gain"),
     })
     bat_imp["importance_norm"] = (
-        0.5 * bat_imp["importance_cls"] / bat_imp["importance_cls"].sum()
-        + 0.5 * bat_imp["importance_reg"] / bat_imp["importance_reg"].sum()
+        best_weights_bat[0] * bat_imp["importance_cls"] / np.maximum(bat_imp["importance_cls"].sum(), 1e-9)
+        + best_weights_bat[1] * bat_imp["importance_reg"] / np.maximum(bat_imp["importance_reg"].sum(), 1e-9)
+        + best_weights_bat[2] * bat_imp["importance_rank"] / np.maximum(bat_imp["importance_rank"].sum(), 1e-9)
     ) * 100
     bat_imp = bat_imp.sort_values("importance_norm", ascending=False)
     bat_imp.to_csv(os.path.join(OUTPUT_DIR, "feature_importance_batter.csv"), index=False, encoding="utf-8-sig")
@@ -512,8 +621,8 @@ def run_experiments():
         "test_2024_2025_7yr_train": m_te_7yr,
         "test_2024_2025_9yr_train": m_te_9yr,
         "oof_2015_2025": m_oof,
-        "best_alpha_pit": best_alpha_pit,
-        "best_alpha_bat": best_alpha_bat,
+        "best_weights_pit": list(best_weights_pit),
+        "best_weights_bat": list(best_weights_bat),
     }
     with open(os.path.join(OUTPUT_DIR, "metrics_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)

@@ -24,13 +24,13 @@ bm = train_batter_lgbm(bat_trva, None, params_override={"n_estimators": max(bm_v
 
 pte = dp[dp["year"].between(2024, 2025)].copy()
 bte = db[db["year"].between(2024, 2025)].copy()
-pte["score"], pte["prob"], pte["vsh"] = predict_pitcher_lgbm(pm, pte, 1.0)
-bte["score"], bte["prob"], bte["vsh"] = predict_batter_lgbm(bm, bte, 0.2)
+pte["score"], pte["prob"], pte["vsh"], pte["rnk"] = predict_pitcher_lgbm(pm, pte, weights=(0.75, 0.0, 0.25))
+bte["score"], bte["prob"], bte["vsh"], bte["rnk"] = predict_batter_lgbm(bm, bte, weights=(0.15, 0.55, 0.30))
 
 lines = []
 lines.append("=== 2024 PA PITCHER ===")
 sub_p = pte[(pte["year"] == 2024) & (pte["league"] == "PA")].sort_values("score", ascending=False)
-cols_p = ["チーム", "選手名", "勝利", "敗北", "勝率", "防御率", "投球回", "奪三振", "WHIP", "主要タイトル数_先発", "team_rank", "votes", "vote_share", "prob", "vsh", "score", "is_winner"]
+cols_p = ["チーム", "選手名", "勝利", "敗北", "勝率", "防御率", "投球回", "奪三振", "prev_vote_share", "主要タイトル数_先発", "team_rank", "votes", "vote_share", "prob", "vsh", "rnk", "score", "is_winner"]
 lines.append(sub_p[cols_p].head(6).to_string(index=False))
 
 for y, lg, pos in [
@@ -44,9 +44,9 @@ for y, lg, pos in [
     lines.append(f"\n=== {y} {lg} {pos} ===")
     sub_b = bte[(bte["year"] == y) & (bte["league"] == lg) & (bte["position"] == pos)].sort_values("score", ascending=False)
     cols_b = [
-        "チーム", "選手名", "打率", "本塁打", "打点", "安打", "盗塁", "出塁率", "OPS", "RC",
-        "pos_starts", "スタメン_総数", "pos_weighted_RC", "pos_margin_cutoff_pos_weighted_RC",
-        "打撃タイトル数", "team_rank", "votes", "vote_share", "prob", "vsh", "score", "is_winner"
+        "チーム", "選手名", "打率", "本塁打", "打点", "安打", "OPS", "RC",
+        "pos_starts", "スタメン_総数", "eff_pos_share", "pos_weighted_RC", "pos_margin_cutoff_pos_weighted_RC",
+        "prev_vote_share", "is_rookie_regular", "打撃タイトル数", "team_rank", "votes", "vote_share", "prob", "vsh", "rnk", "score", "is_winner"
     ]
     lines.append(sub_b[cols_b].head(6).to_string(index=False))
 

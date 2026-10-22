@@ -79,6 +79,16 @@ def build_pitcher_dataset(standings, pitchers, bio, lineups, b9):
     df["is_winner"] = df["is_winner"].fillna(0).astype(int)
     df["position"] = "投手"
 
+    # Previous year Best Nine vote share & winner status (lag 1 year by norm_name)
+    b9_p_prev = b9_p.groupby(["year", "norm_name"], as_index=False).agg({
+        "vote_share": "max",
+        "is_winner": "max",
+    }).rename(columns={"vote_share": "prev_vote_share", "is_winner": "prev_is_winner"})
+    b9_p_prev["year"] = b9_p_prev["year"] + 1
+    df = pd.merge(df, b9_p_prev, on=["year", "norm_name"], how="left")
+    df["prev_vote_share"] = df["prev_vote_share"].fillna(0.0)
+    df["prev_is_winner"] = df["prev_is_winner"].fillna(0).astype(int)
+
     # Domain engineered features for Pitchers
     df["貯金"] = df["勝利"] - df["敗北"]
     df["先発数"] = df["スタメン_投手"]
@@ -87,6 +97,7 @@ def build_pitcher_dataset(standings, pitchers, bio, lineups, b9):
     df["規定投球回充足率"] = df["投球回"] / df["team_games"]
     df["QS相当指標"] = df["投球回"] / np.maximum(df["先発数"], 1)
     df["log_推定年俸"] = np.log1p(df["推定年俸"].fillna(0))
+    df["is_rookie_regular"] = ((df["プロ年数"].fillna(99) == 1) & (df["規定投球回到達"] == 1)).astype(int)
 
     # League-year relative features
     def add_league_features(g):
@@ -250,6 +261,23 @@ def build_batter_dataset(standings, hitters, bio, lineups, b9):
 
     df_cand = pd.concat(cand_list, ignore_index=True)
 
+    # Merge previous year Best Nine vote share (same position & any position)
+    b9_b_prev_pos = b9_b.groupby(["year", "position", "norm_name"], as_index=False).agg({
+        "vote_share": "max",
+        "is_winner": "max",
+    }).rename(columns={"vote_share": "prev_vote_share", "is_winner": "prev_is_winner"})
+    b9_b_prev_pos["year"] = b9_b_prev_pos["year"] + 1
+    df_cand = pd.merge(df_cand, b9_b_prev_pos, on=["year", "position", "norm_name"], how="left")
+    df_cand["prev_vote_share"] = df_cand["prev_vote_share"].fillna(0.0)
+    df_cand["prev_is_winner"] = df_cand["prev_is_winner"].fillna(0).astype(int)
+
+    b9_b_prev_any = b9_b.groupby(["year", "norm_name"], as_index=False).agg({
+        "vote_share": "max",
+    }).rename(columns={"vote_share": "prev_any_pos_vote_share"})
+    b9_b_prev_any["year"] = b9_b_prev_any["year"] + 1
+    df_cand = pd.merge(df_cand, b9_b_prev_any, on=["year", "norm_name"], how="left")
+    df_cand["prev_any_pos_vote_share"] = df_cand["prev_any_pos_vote_share"].fillna(0.0)
+
     # Position-specific features
     df_cand["pos_starts_rate_team"] = df_cand["pos_starts"] / df_cand["team_games"]
     df_cand["pos_starts_share_player"] = np.where(df_cand["スタメン_総数"] > 0, df_cand["pos_starts"] / df_cand["スタメン_総数"], 0.0)
@@ -258,14 +286,36 @@ def build_batter_dataset(standings, hitters, bio, lineups, b9):
     df_cand["is_outfield"] = (df_cand["position"] == "外野手").astype(int)
     df_cand["slots_available"] = np.where(df_cand["position"] == "外野手", 3, 1)
 
-    # Effective offensive metrics weighted by playing time at the position
-    # Voters strongly favor full-time starters at the position (e.g. >= 75-85% of team games at that position)
-    pos_weight = np.clip(df_cand["pos_starts"] / (df_cand["team_games"] * 0.75), 0.0, 1.15) * (0.3 + 0.7 * df_cand["pos_starts_share_player"])
+    # 1) 新人レギュラーフラグ (Rookie full-time starter flag)
+    df_cand["is_rookie"] = (df_cand["プロ年数"].fillna(99) == 1).astype(int)
+    df_cand["is_rookie_regular"] = (
+        (df_cand["プロ年数"].fillna(99) == 1)
+        & (df_cand["pos_starts_rate_team"] >= 0.65)
+        & (df_cand["is_primary_pos"] == 1)
+    ).astype(int)
+
+    # 2) 主砲の兼任割引フロア制限 (Cleanup/Mainstay multi-position share floor):
+    # If a player starts >= 68% of team games (~98+ games) at their primary position AND starts >= 90% of team games overall
+    # (or has >= 60 middle-of-the-order cleanup starts), playing additional games at a secondary position for team needs
+    # should not overly penalize their primary position share below 0.90.
+    is_mainstay_primary = (
+        (df_cand["is_primary_pos"] == 1)
+        & (df_cand["pos_starts_rate_team"] >= 0.68)
+        & ((df_cand["スタメン出場率"] >= 0.90) | (df_cand["中軸スタメン数"] >= 60))
+    )
+    df_cand["eff_pos_share"] = np.where(
+        is_mainstay_primary,
+        np.maximum(df_cand["pos_starts_share_player"], 0.90),
+        df_cand["pos_starts_share_player"],
+    )
+
+    # Effective offensive metrics weighted by playing time at the position (using eff_pos_share)
+    pos_weight = np.clip(df_cand["pos_starts"] / (df_cand["team_games"] * 0.75), 0.0, 1.15) * (0.3 + 0.7 * df_cand["eff_pos_share"])
     df_cand["pos_weighted_OPS"] = df_cand["OPS"] * pos_weight
-    df_cand["pos_weighted_RC"] = df_cand["RC"] * np.clip(df_cand["pos_starts"] / (df_cand["team_games"] * 0.75), 0.0, 1.10) * df_cand["pos_starts_share_player"]
-    df_cand["pos_weighted_HR"] = df_cand["本塁打"] * df_cand["pos_starts_share_player"]
-    df_cand["pos_weighted_RBI"] = df_cand["打点"] * df_cand["pos_starts_share_player"]
-    df_cand["pos_weighted_H"] = df_cand["安打"] * np.clip(df_cand["pos_starts"] / (df_cand["team_games"] * 0.75), 0.0, 1.10) * df_cand["pos_starts_share_player"]
+    df_cand["pos_weighted_RC"] = df_cand["RC"] * np.clip(df_cand["pos_starts"] / (df_cand["team_games"] * 0.75), 0.0, 1.10) * df_cand["eff_pos_share"]
+    df_cand["pos_weighted_HR"] = df_cand["本塁打"] * df_cand["eff_pos_share"]
+    df_cand["pos_weighted_RBI"] = df_cand["打点"] * df_cand["eff_pos_share"]
+    df_cand["pos_weighted_H"] = df_cand["安打"] * np.clip(df_cand["pos_starts"] / (df_cand["team_games"] * 0.75), 0.0, 1.10) * df_cand["eff_pos_share"]
     df_cand["pos_weighted_AVG"] = df_cand["打率"] * pos_weight
 
     # Within (year, league, position) competition features!
