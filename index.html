@@ -91,6 +91,9 @@
         <button role="tab" aria-selected="false" onclick="switchTab('tab-improve', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
           ⑧ 精度向上の4大改良＆守備位置別重要度（80%〜84%突破）
         </button>
+        <button role="tab" aria-selected="false" onclick="switchTab('tab-imbalance', this)" class="tab-btn px-3 py-2 rounded-lg text-xs md:text-sm border border-[var(--border)] transition cursor-pointer">
+          ⑨ データの偏り（年19名・不均衡）への6大対策
+        </button>
       </nav>
     </header>
 
@@ -1605,6 +1608,227 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         TAB 9: Class Imbalance & Small Sample Countermeasures
+         ========================================== -->
+    <section id="tab-imbalance" class="tab-panel hidden space-y-6">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-6">
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="step-badge px-2.5 py-0.5 rounded-md text-xs">不均衡データ・過学習対策</span>
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">投手正例率 0.58% / 野手正例率 5.14%</span>
+          </div>
+          <h2 class="text-lg md:text-xl font-bold">
+            年間わずか19名しか選ばれない「極端なデータの偏り（クラス不均衡）」に対する6大対策
+          </h2>
+          <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+            ベストナインはセ・リーグ9名＋パ・リーグ10名の<strong>年間合計19名</strong>しか選出されません。そのまま機械学習モデルに学習させると、<strong>①「全員落選（0）」と予測しても正解率95%〜99%になってしまう問題（クラス不均衡）</strong>と、<strong>② わずか十数名の過去受賞者の数値を丸暗記してしまう問題（少数サンプルの過学習）</strong>が発生します。本システムでは、前処理・目的変数設計・正則化・階層アンサンブル・推論アルゴリズムの<strong>6段階すべてに専用の防御策</strong>を組み込んでいます。
+          </p>
+        </div>
+
+        <!-- 1. 実データの不均衡度サマリー -->
+        <div class="p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-4">
+          <h3 class="text-sm font-bold flex items-center gap-2">
+            <span>📊 実データ（2015〜2025年・11年間）における「正例（受賞者）の少なさ」の実態</span>
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="p-4 rounded-xl bg-[var(--card)] border border-red-500/30 space-y-1.5">
+              <div class="text-[var(--muted-foreground)] font-semibold">⚾ 投手データ（2015–2025年）</div>
+              <div class="text-2xl font-extrabold text-red-500">0.58% <span class="text-xs font-normal text-[var(--muted-foreground)]">（22名 / 3,805行）</span></div>
+              <p class="text-[var(--muted-foreground)] leading-relaxed">
+                各リーグ年間1名のみ。約<strong>173人に1人</strong>しか選ばれない極端な不均衡データ。何も対策しないとモデルは全員に確率0%を出してしまいます。
+              </p>
+            </div>
+            <div class="p-4 rounded-xl bg-[var(--card)] border border-amber-500/30 space-y-1.5">
+              <div class="text-[var(--muted-foreground)] font-semibold">🏏 野手候補データ（5試合以上先発フィルタ後）</div>
+              <div class="text-2xl font-extrabold text-amber-500">5.14% <span class="text-xs font-normal text-[var(--muted-foreground)]">（187名 / 3,638行）</span></div>
+              <p class="text-[var(--muted-foreground)] leading-relaxed">
+                全出場選手から「その守備位置で5試合以上先発」に絞った後でも約<strong>19人に1人</strong>（正例1：負例18.5）しか正例がありません。
+              </p>
+            </div>
+            <div class="p-4 rounded-xl bg-[var(--card)] border border-sky-500/30 space-y-1.5">
+              <div class="text-[var(--muted-foreground)] font-semibold">🧤 守備位置別の最小正例数（単一ポジション）</div>
+              <div class="text-2xl font-extrabold text-sky-500">22名 <span class="text-xs font-normal text-[var(--muted-foreground)]">（捕手・11年間合計）</span></div>
+              <p class="text-[var(--muted-foreground)] leading-relaxed">
+                捕手・一塁・二塁・三塁・遊撃・DHは11年間で正例が<strong>各22件</strong>のみ（外野手のみ66件）。深い決定木を使うと一瞬で丸暗記（過学習）します。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6大対策のカードグリッド -->
+        <div class="space-y-4">
+          <h3 class="text-base font-bold">🛡️ 本モデルが実装している「6つの多層防御策」</h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 対策① -->
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-emerald-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-500/15 text-emerald-500">対策 ①：教師信号の拡張（最重要）</span>
+                <span class="text-xs font-mono text-[var(--muted-foreground)]">_compute_relevance_grades()</span>
+              </div>
+              <h4 class="text-sm font-bold">「0か1か」だけでなく「得票率」と「6段階グレード」を同時に学習し、正例データを約4〜5倍に拡張</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                年間19名の受賞者（<code>is_winner=1</code>）だけを見ると正例は年19件しかありませんが、実際には毎年<strong>80〜100名の選手が記者から1票以上の投票（<code>vote_share &gt; 0</code>）</strong>を得ています。本モデルでは3種類のターゲットを同時に学習させています。
+              </p>
+              <div class="overflow-x-auto">
+                <table class="w-full text-[11px] border-collapse">
+                  <thead>
+                    <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                      <th class="py-1.5 px-2 text-left">モデル</th>
+                      <th class="py-1.5 px-2 text-left">学習ターゲット</th>
+                      <th class="py-1.5 px-2 text-left">不均衡への効果</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-[var(--border)]">
+                    <tr>
+                      <td class="py-1.5 px-2 font-mono font-bold">LGBMClassifier</td>
+                      <td class="py-1.5 px-2"><code>is_winner</code> (0 or 1)</td>
+                      <td class="py-1.5 px-2">当落境界の確率を学習（年19件）</td>
+                    </tr>
+                    <tr>
+                      <td class="py-1.5 px-2 font-mono font-bold text-sky-500">LGBMRegressor</td>
+                      <td class="py-1.5 px-2"><code>vote_share</code> (0.0〜1.0)</td>
+                      <td class="py-1.5 px-2"><strong>得票した全選手（年80〜100名）</strong>から連続値で学習</td>
+                    </tr>
+                    <tr>
+                      <td class="py-1.5 px-2 font-mono font-bold text-emerald-500">LGBMRanker</td>
+                      <td class="py-1.5 px-2">6段階グレード (<code>0〜5</code>)</td>
+                      <td class="py-1.5 px-2"><code>5</code>:受賞 / <code>4</code>:得票30%↑ / <code>3</code>:10%↑ / <code>2</code>:3%↑ / <code>1</code>:得票あり / <code>0</code>:0票</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="text-[11px] text-emerald-500 font-semibold">
+                👉 「惜しくも2位・3位で得票した選手」も重要な準正例として活かせるため、実質的な教師信号が4〜5倍に増えています！
+              </p>
+            </div>
+
+            <!-- 対策② -->
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-sky-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-sky-500/15 text-sky-500">対策 ②：損失関数の重み付け</span>
+                <span class="text-xs font-mono text-[var(--muted-foreground)]">scale_pos_weight</span>
+              </div>
+              <h4 class="text-sm font-bold">正例（受賞者）を見逃したときのペナルティを投手で5倍・野手で3倍に増幅</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                2値分類器（<code>LGBMClassifier</code>）の交差エントロピー損失（Binary Logloss）において、少数派である受賞者（<code>y=1</code>）の誤差に対する勾配（Gradient）の重みを大きく設定しています。
+              </p>
+              <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-xs space-y-1.5">
+                <div><span class="text-red-500 font-bold"># 投手モデル（正例率 0.58%）</span><br/>scale_pos_weight = <strong>5.0</strong>  <span class="text-[var(--muted-foreground)]"># 受賞者の重みを落選者の5倍に強化</span></div>
+                <div><span class="text-amber-500 font-bold"># 野手モデル（正例率 5.14%）</span><br/>scale_pos_weight = <strong>3.0</strong>  <span class="text-[var(--muted-foreground)]"># 受賞者の重みを落選者の3倍に強化</span></div>
+              </div>
+              <p class="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+                ※ 単純に逆数（投手173倍・野手19倍）をかけると今度は偽陽性（ハズレ候補への過剰な高確率）が爆発するため、回帰・ランカーとのアンサンブル時に最もCalibration（確率の並び順）が良くなる <code>5.0 / 3.0</code> にチューニングしています。
+              </p>
+            </div>
+
+            <!-- 対策③ -->
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-purple-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-500/15 text-purple-500">対策 ③：学習前のノイズ負例カット</span>
+                <span class="text-xs font-mono text-[var(--muted-foreground)]">Under-sampling / 候補足切り</span>
+              </div>
+              <h4 class="text-sm font-bold">「絶対に選ばれるはずがない数試合出場の負例ノイズ」を学習前に除外</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                プロ野球の全登録選手×全9ポジションをそのまま並べると、数万行の「0票データ」が発生し、モデルが「試合に出たかどうか」ばかりを学習してしまいます。そこで、ドメイン知識に基づく二段階フィルタで<strong>「実質的な選考対象母集団」</strong>に絞り込んでいます。
+              </p>
+              <ul class="text-xs text-[var(--muted-foreground)] space-y-1.5 list-disc pl-5">
+                <li><strong>野手の候補フィルタ</strong>（<code>build_features_and_train.py</code>）：その守備位置での<strong>先発出場が5試合以上</strong>（または実際に1票以上得票した選手）のみを候補行として生成。1試合だけ守備固めで付いたポジション行などを完全排除。</li>
+                <li><strong>投手の学習フィルタ</strong>（<code>train_models.py</code>）：学習データでは<strong>登板5試合以上 または 投球回10イニング以上</strong>の投手に限定し、1イニング登板で防御率0.00の敗戦処理投手がノイズにならないよう除外。</li>
+              </ul>
+            </div>
+
+            <!-- 対策④ -->
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-amber-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500/15 text-amber-500">対策 ④：浅い決定木と強いL1/L2正則化</span>
+                <span class="text-xs font-mono text-[var(--muted-foreground)]">max_depth=2〜3 / reg_lambda</span>
+              </div>
+              <h4 class="text-sm font-bold">「22名の受賞者を丸暗記」させないための極小ツリー構造と葉ノード人数制限</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                LightGBMのデフォルト設定（<code>num_leaves=31</code>）をそのまま使うと、正例が22件しかない投手モデルや捕手モデルでは「1枚の葉に受賞者1人だけを入れる丸暗記（過学習）」が起きます。本モデルでは木の深さと葉の枚数を極限まで絞っています。
+              </p>
+              <div class="overflow-x-auto">
+                <table class="w-full text-[11px] border-collapse">
+                  <thead>
+                    <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                      <th class="py-1.5 px-2 text-left">モデル種別</th>
+                      <th class="py-1.5 px-2 text-left">木の深さ / 葉の数</th>
+                      <th class="py-1.5 px-2 text-left">最小データ数 / 正則化</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-[var(--border)]">
+                    <tr>
+                      <td class="py-1.5 px-2 font-bold">投手モデル（正例22件）</td>
+                      <td class="py-1.5 px-2 font-mono text-amber-500">max_depth=2, num_leaves=3</td>
+                      <td class="py-1.5 px-2 font-mono">min_child=20, α=1.0, λ=2.0</td>
+                    </tr>
+                    <tr>
+                      <td class="py-1.5 px-2 font-bold">野手全体モデル（正例187件）</td>
+                      <td class="py-1.5 px-2 font-mono text-emerald-500">max_depth=3, num_leaves=7</td>
+                      <td class="py-1.5 px-2 font-mono">min_child=15, α=1.0, λ=2.0</td>
+                    </tr>
+                    <tr>
+                      <td class="py-1.5 px-2 font-bold">捕手・二遊間専門（正例22〜44件）</td>
+                      <td class="py-1.5 px-2 font-mono text-sky-500">max_depth=2, num_leaves=4</td>
+                      <td class="py-1.5 px-2 font-mono">min_child=10, α=1.5, λ=3.0</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 対策⑤ -->
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-pink-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-pink-500/15 text-pink-500">対策 ⑤：サンプル数に応じた階層ブレンド</span>
+                <span class="text-xs font-mono text-[var(--muted-foreground)]">predict_batter_hierarchical()</span>
+              </div>
+              <h4 class="text-sm font-bold">守備位置別モデル（小サンプル）の過学習を「野手全体モデル（187正例）」で支える階層構造</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                野手を守備位置グループ別に分割すると、たとえば「捕手」は11年間で正例が<strong>22名（441行）</strong>しかなく、単独モデルだけでは未知の年に不安定になります。そこで、全野手（正例187名・3,638行）で学習した「全体モデル」と、サンプル数に応じた比率 α でブレンドしています。
+              </p>
+              <div class="grid grid-cols-2 gap-2 text-[11px]">
+                <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                  <div class="font-bold text-amber-500">🛡️ 捕手（正例22名 / 441行）</div>
+                  <div>専門 <strong>20%</strong> ＋ 全体 <strong>80%</strong> (<code>α = 0.20</code>)</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                  <div class="font-bold text-sky-500">⚡ 二遊間（正例44名 / 727行）</div>
+                  <div>専門 <strong>25%</strong> ＋ 全体 <strong>75%</strong> (<code>α = 0.25</code>)</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                  <div class="font-bold text-purple-500">💪 1B/3B/DH（正例55名 / 1,262行）</div>
+                  <div>専門 <strong>10%</strong> ＋ 全体 <strong>90%</strong> (<code>α = 0.10</code>)</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                  <div class="font-bold text-emerald-500">🏃 外野手（正例66名 / 1,208行）</div>
+                  <div>専門 <strong>100%</strong> 単独予測 (<code>α = 1.00</code>)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 対策⑥ -->
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-indigo-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-500/15 text-indigo-500">対策 ⑥：閾値0.5を使わない相対Top-K選出</span>
+                <span class="text-xs font-mono text-[var(--muted-foreground)]">select_best_nine_for_league_year()</span>
+              </div>
+              <h4 class="text-sm font-bold">「予測確率50%以上」で判定せず、各年度のポジション内相対1位（外野3位）を定員割当</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                不均衡データで最も危険なのが、推論時に <code>pred_prob &gt;= 0.5</code> という固定閾値で当選・落選を決めてしまうことです。混戦の年（全員が確率0.35以下の年）に「当選者ゼロ」になったり、逆に2人当選したりしてしまいます。
+              </p>
+              <ul class="text-xs text-[var(--muted-foreground)] space-y-1.5 list-disc pl-5">
+                <li><strong>相対スコアによる定員割当</strong>：モデルが出力したスコア（確率＋予想得票率＋ランクスコア）を<strong>「その年・そのリーグ・その守備位置の候補者内での相対順位」</strong>として扱い、各ポジション上位1名（外野は上位3名）を重複なしで選出します。</li>
+                <li><strong>評価指標も不均衡耐性のある指標を採用</strong>：全行の単純Accuracy（全員0でも95%になる見せかけの指標）ではなく、<strong>「19枠中何枠的中したか（Slot Accuracy：81.6%〜84.2%）」</strong>と<strong>「ROC-AUC（投手0.996・野手0.985）」</strong>で厳密に評価しています。</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
