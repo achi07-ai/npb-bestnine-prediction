@@ -1611,6 +1611,250 @@
           </div>
         </div>
       </div>
+      <!-- 4. 2026 Best Nine Re-prediction with the Improved Model -->
+      <div class="bg-[var(--card)] border-2 border-emerald-500/60 rounded-2xl p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-600 text-white">2026年 最新再予測</span>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">2015–2025年（全11年）学習 × 4大改良フル適用モデル</span>
+            </div>
+            <h3 class="text-base md:text-lg font-bold">
+              🔮 改善したモデル（4大改良＋守備位置別階層アンサンブル）による「2026年ベストナイン」最終予測（全19枠）
+            </h3>
+          </div>
+        </div>
+
+        <p class="text-xs md:text-sm text-[var(--muted-foreground)] leading-relaxed">
+          2015〜2025年の全11年データで再学習した<strong>改良後モデル（①前年得票率 <code>prev_vote_share</code>、②主砲の兼任割引フロア <code>eff_pos_share</code>、③3モデルアンサンブル <code>Classifier + Regressor + LGBMRanker</code>、④守備位置グループ別モデルとの階層ブレンド）</strong>を用いて、2026年シーズンのベストナイン全19枠を改めて予測しました。改良前のベースライン予想と比較すると、以下の<strong>3つの興味深い変化</strong>が表れています。
+        </p>
+
+        <!-- Key Changes Highlight Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-emerald-500/50 space-y-1.5">
+            <div class="font-bold text-emerald-500">🔥 変化①：セ・外野手2枠目に「増田 珠（ヤクルト）」が逆転浮上！</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              旧モデルでは「森下・細川・近本」の3名でしたが、改良後は<strong>2枠目に増田 珠選手（<code>0.315</code>・打率.293・102試合先発）、3枠目に細川 成也選手（<code>0.295</code>・25本・重みRC2位）</strong>が入り、近本 光司選手（<code>0.276</code>・外野90試合先発）が僅差4位（次点）となりました。外野手専用モデル（$lpha=1.00$）が重視する<strong>「規定打席到達＆規定打率順位（7.0%）」</strong>と <code>LGBMRanker</code>（増田 <code>0.586</code>）が強く効いています。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-sky-500/50 space-y-1.5">
+            <div class="font-bold text-sky-500">⚔️ 変化②：セ・二塁手「牧 秀悟 vs 中野 拓夢」が 0.083差の超接戦に！</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              2025年受賞の<strong>中野 拓夢選手（阪神・打率.287・128試合）</strong>に「前年得票率 <code>95.3%</code>」と「二遊間専用モデル＆Ranker（<code>0.524</code>）」の加点が入り、旧スコア <code>0.462 → 0.497</code> へ急上昇！それでも<strong>30本塁打・OPS.927・重みRC差+13.3の牧 秀悟選手（DeNA・<code>0.580</code>）</strong>がリードを守り1位選出されました。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-amber-500/50 space-y-1.5">
+            <div class="font-bold text-amber-500">📈 変化③：捕手・一塁・遊撃の「混戦部門」で1位候補の解像度が大幅向上！</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              <code>LGBMRanker</code>（年度・ポジション内の相対順位学習）と <code>eff_pos_share</code> の相乗効果により、絶対得票率が割れやすい混戦部門でも、<strong>巨人・大城卓三（旧<code>0.390</code>→<code>0.490</code>）、日本ハム・清宮幸太郎（旧<code>0.354</code>→<code>0.485</code>）、日本ハム・水野達稀（旧<code>0.700</code>→<code>0.754</code>）、ロッテ・佐藤都志也（旧<code>0.311</code>→<code>0.367</code>）</strong>と1位本命のスコアが明確に上昇しました。
+            </p>
+          </div>
+        </div>
+
+        <!-- Central League 2026 Table -->
+        <div class="space-y-2 pt-2">
+          <h4 class="text-sm font-bold flex items-center gap-2 text-emerald-500">
+            <span>⚾ 2026年 セ・リーグ ベストナイン予測（改良後モデル・全9枠 ＆ 次点候補比較）</span>
+          </h4>
+          <div class="overflow-x-auto border border-[var(--border)] rounded-xl">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                <tr>
+                  <th class="py-2.5 px-3">部門</th>
+                  <th class="py-2.5 px-3">改良後 1位予測選手 (球団・順位)</th>
+                  <th class="py-2.5 px-3">最終スコア (旧比較)</th>
+                  <th class="py-2.5 px-3">3モデル内訳 (分類 / 回帰 / Rank)</th>
+                  <th class="py-2.5 px-3">2026年 成績・主要特徴量</th>
+                  <th class="py-2.5 px-3">次点候補 (2位・3位) とスコア</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border)] bg-[var(--background)]">
+                <tr>
+                  <td class="py-2 px-3 font-bold">投手</td>
+                  <td class="py-2 px-3 font-bold">髙橋 遥人 <span class="font-normal text-[var(--muted-foreground)]">(阪神・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.908 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.964)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.958 / vsh:0.785 / rnk:0.758</td>
+                  <td class="py-2 px-3">16勝3敗(貯金+13)、防御率1.87、159回、タイトル2個(最多勝・勝率)</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②才木 浩人 (阪神 <code>0.098</code> / 10勝・175奪三振)<br/>③村上 頌樹 (阪神 <code>0.047</code> / 防御率1.85・10勝)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">捕手</td>
+                  <td class="py-2 px-3 font-bold">大城 卓三 <span class="font-normal text-[var(--muted-foreground)]">(巨人・2位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.490 <span class="text-[10px] text-sky-500 font-semibold">(↑旧0.390)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.518 / vsh:0.414 / rnk:0.617</td>
+                  <td class="py-2 px-3">打率.260、10本、43打点、OPS.758、素RC 48.6(捕手1位)、先発86試合(実効専任0.91)</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②石伊 雄太 (中日 <code>0.313</code> / .264・7本・101試合)<br/>③坂本 誠志郎 (阪神 <code>0.149</code> / .197・10本・前年93.8%)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">一塁手</td>
+                  <td class="py-2 px-3 font-bold">大山 悠輔 <span class="font-normal text-[var(--muted-foreground)]">(阪神・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.878 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.928)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.975 / vsh:0.886 / rnk:0.814</td>
+                  <td class="py-2 px-3">打率.285、20本、85打点、OPS.819、重みRC 91.1(差+47.9)、先発140試合、前年96.4%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②ダルベック (巨人 <code>0.124</code> / .252・25本・89試合)<br/>③佐野 恵太 (DeNA <code>0.022</code> / .262・8本・95試合)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">二塁手</td>
+                  <td class="py-2 px-3 font-bold">牧 秀悟 <span class="font-normal text-[var(--muted-foreground)]">(DeNA・3位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.580 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.646)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.725 / vsh:0.584 / rnk:0.476</td>
+                  <td class="py-2 px-3">打率.283、30本、75打点、OPS.927、重みRC 78.7(差+13.3)、先発105試合</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②中野 拓夢 (阪神 <code>0.497</code> / .287・146安打・優勝・前年95.3%)<br/>③菊池 涼介 (広島 <code>0.026</code>)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">三塁手</td>
+                  <td class="py-2 px-3 font-bold">佐藤 輝明 <span class="font-normal text-[var(--muted-foreground)]">(阪神・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.971 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.998)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.988 / vsh:0.991 / rnk:0.927</td>
+                  <td class="py-2 px-3">打率.306、39本、106打点、OPS.991、重みRC 119.7(差+86.2)、前年得票97.8%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②坂倉 将吾 (広島 <code>0.032</code> / .251・15本・三塁65試合)<br/>③ダルベック (巨人 <code>0.022</code>)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">遊撃手</td>
+                  <td class="py-2 px-3 font-bold">泉口 友汰 <span class="font-normal text-[var(--muted-foreground)]">(巨人・2位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.694 <span class="text-[10px] text-sky-500 font-semibold">(↑旧0.666)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.920 / vsh:0.632 / rnk:0.719</td>
+                  <td class="py-2 px-3">打率.264、8本、49打点、OPS.729、重みRC 70.9(差+7.7)、先発122試合、前年72.0%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②村松 開人 (中日 <code>0.152</code> / .258・6本・124試合)<br/>③長岡 秀樹 (ヤクルト <code>0.082</code> / .248・8本)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">外野手①</td>
+                  <td class="py-2 px-3 font-bold">森下 翔太 <span class="font-normal text-[var(--muted-foreground)]">(阪神・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.949 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.990)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.974 / vsh:0.948 / rnk:0.933</td>
+                  <td class="py-2 px-3">打率.292、35本、84打点、OPS.951、重みRC 119.0(外野1位)、先発141試合、前年96.7%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]" rowspan="3">
+                    <strong>【外野次点（4〜6位）】</strong><br/>
+                    ④近本 光司 (阪神 <code>0.276</code> / 打率.306・114安打・外野90試合先発・前年89.1% ※全体モデルでは0.428で2位だが外野専用モデルで出場数差により僅差4位)<br/>
+                    ⑤度会 隆輝 (DeNA <code>0.240</code> / .274・9本・129安打)<br/>
+                    ⑥サンタナ (ヤクルト <code>0.228</code> / .251・17本・OPS.815)
+                  </td>
+                </tr>
+                <tr class="bg-emerald-500/5">
+                  <td class="py-2 px-3 font-bold text-emerald-500">外野手②</td>
+                  <td class="py-2 px-3 font-bold text-emerald-500">増田 珠 <span class="font-normal text-[var(--muted-foreground)]">(ヤクルト・5位) 🔥新規</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.315 <span class="text-[10px] text-amber-500 font-bold">(🔥旧圏外→2位)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.135 / vsh:0.224 / rnk:0.586</td>
+                  <td class="py-2 px-3">打率.293(規定打率上位)、9本、40打点、118安打、OPS.740、外野102試合先発</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">外野手③</td>
+                  <td class="py-2 px-3 font-bold">細川 成也 <span class="font-normal text-[var(--muted-foreground)]">(中日・6位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.295 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧2位 0.357)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.121 / vsh:0.296 / rnk:0.411</td>
+                  <td class="py-2 px-3">打率.226、25本、71打点、OPS.771、重みRC 84.7(外野2位・差+32.6)、先発142試合</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pacific League 2026 Table -->
+        <div class="space-y-2 pt-2">
+          <h4 class="text-sm font-bold flex items-center gap-2 text-sky-500">
+            <span>⚾ 2026年 パ・リーグ ベストナイン予測（改良後モデル・全10枠 ＆ 次点候補比較）</span>
+          </h4>
+          <div class="overflow-x-auto border border-[var(--border)] rounded-xl">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                <tr>
+                  <th class="py-2.5 px-3">部門</th>
+                  <th class="py-2.5 px-3">改良後 1位予測選手 (球団・順位)</th>
+                  <th class="py-2.5 px-3">最終スコア (旧比較)</th>
+                  <th class="py-2.5 px-3">3モデル内訳 (分類 / 回帰 / Rank)</th>
+                  <th class="py-2.5 px-3">2026年 成績・主要特徴量</th>
+                  <th class="py-2.5 px-3">次点候補 (2位・3位) とスコア</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border)] bg-[var(--background)]">
+                <tr>
+                  <td class="py-2 px-3 font-bold">投手</td>
+                  <td class="py-2 px-3 font-bold">平良 海馬 <span class="font-normal text-[var(--muted-foreground)]">(西武・2位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.674 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.726)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.708 / vsh:0.192 / rnk:0.570</td>
+                  <td class="py-2 px-3">防御率1.36(最優秀防御率)、12勝5敗(貯金+7)、146回、141奪三振</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②北山 亘基 (日本ハム <code>0.339</code> / 13勝3敗・防御率2.56・2冠)<br/>③エスピノーザ (オリックス <code>0.165</code> / 13勝6敗)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">捕手</td>
+                  <td class="py-2 px-3 font-bold">佐藤 都志也 <span class="font-normal text-[var(--muted-foreground)]">(ロッテ・5位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.367 <span class="text-[10px] text-emerald-500 font-semibold">(↑旧0.311)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.441 / vsh:0.275 / rnk:0.508</td>
+                  <td class="py-2 px-3">打率.225、18本塁打、57打点、OPS.710、重みRC 49.3(差+19.6・捕手1位)、104試合</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②小島 大河 (西武 <code>0.281</code> / .267・9本・40打点・83試合)<br/>③田宮 裕涼 (日本ハム <code>0.091</code> / .266・7本)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">一塁手</td>
+                  <td class="py-2 px-3 font-bold">清宮 幸太郎 <span class="font-normal text-[var(--muted-foreground)]">(日本ハム・3位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.485 <span class="text-[10px] text-emerald-500 font-semibold">(↑旧0.354)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.518 / vsh:0.363 / rnk:0.690</td>
+                  <td class="py-2 px-3">打率.237、23本、65打点、OPS.758、重みRC 59.6(差+21.1)、一塁108試合、前年三塁11.4%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②ネビン (西武 <code>0.165</code> / .265・21本・OPS.826・83試合・前年84.7%)<br/>③正木 智也 (SB <code>0.109</code> / 28本・一塁51試合)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">二塁手</td>
+                  <td class="py-2 px-3 font-bold">牧原 大成 <span class="font-normal text-[var(--muted-foreground)]">(ソフトバンク・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.811 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.857)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.935 / vsh:0.772 / rnk:0.843</td>
+                  <td class="py-2 px-3">打率.300、5本、48打点、140安打、重みRC 50.1(差+9.5)、先発102試合、前年得票92.1%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②小川 龍成 (ロッテ <code>0.123</code> / .256・120安打・116試合)<br/>③太田 椋 (オリックス <code>0.079</code> / .280・9本・72試合)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">三塁手</td>
+                  <td class="py-2 px-3 font-bold">栗原 陵矢 <span class="font-normal text-[var(--muted-foreground)]">(ソフトバンク・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.962 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.998)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.987 / vsh:0.982 / rnk:0.913</td>
+                  <td class="py-2 px-3">打率.271、40本塁打、118打点、OPS.922、重みRC 110.8(差+41.4)、先発133試合</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②渡部 聖弥 (西武 <code>0.034</code> / .255・12本・102試合)<br/>③宗 佑磨 (オリックス <code>0.017</code> / .245・14本・128試合)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">遊撃手</td>
+                  <td class="py-2 px-3 font-bold">水野 達稀 <span class="font-normal text-[var(--muted-foreground)]">(日本ハム・3位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.754 <span class="text-[10px] text-emerald-500 font-semibold">(↑旧0.700)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.939 / vsh:0.715 / rnk:0.730</td>
+                  <td class="py-2 px-3">打率.289、11本、58打点、142安打、16盗塁、OPS.783、重みRC 80.7(差+6.9)、122試合</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②紅林 弘太郎 (オリックス <code>0.182</code> / .260・18本・60打点・前年41.5%)<br/>③村林 一輝 (楽天 <code>0.025</code>)</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">外野手①</td>
+                  <td class="py-2 px-3 font-bold">近藤 健介 <span class="font-normal text-[var(--muted-foreground)]">(ソフトバンク・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.922 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.997)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.958 / vsh:0.923 / rnk:0.896</td>
+                  <td class="py-2 px-3">打率.309、32本、108打点、OPS.999、素RC 119.6(外野1位)、外野97試合(実効専任0.71)</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]" rowspan="3">
+                    <strong>【外野次点（4〜6位）】</strong><br/>
+                    ④西川 龍馬 (オリックス <code>0.274</code> / .271・13本・155安打・外野92試合)<br/>
+                    ⑤辰己 涼介 (楽天 <code>0.251</code> / .263・15本・132安打・外野130試合・重みRC70.9)<br/>
+                    ⑥山口 航輝 (ロッテ <code>0.140</code> / .277・38本・81打点・外野54試合)
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">外野手②</td>
+                  <td class="py-2 px-3 font-bold">西川 史礁 <span class="font-normal text-[var(--muted-foreground)]">(ロッテ・5位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.764 <span class="text-[10px] text-emerald-500 font-semibold">(↑旧0.724)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.940 / vsh:0.666 / rnk:0.810</td>
+                  <td class="py-2 px-3">打率.290、8本、53打点、155安打、OPS.745、重みRC 77.9(外野1位)、134試合、前年20.1%</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">外野手③</td>
+                  <td class="py-2 px-3 font-bold">周東 佑京 <span class="font-normal text-[var(--muted-foreground)]">(ソフトバンク・1位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.674 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.710)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.902 / vsh:0.618 / rnk:0.617</td>
+                  <td class="py-2 px-3">打率.275、4本、30盗塁(盗塁王)、133安打、重みRC 72.8(差+1.9)、124試合、前年40.2%</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">指名打者</td>
+                  <td class="py-2 px-3 font-bold">レイエス <span class="font-normal text-[var(--muted-foreground)]">(日本ハム・3位)</span></td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.916 <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧0.968)</span></td>
+                  <td class="py-2 px-3 font-mono text-[11px]">prob:0.985 / vsh:0.957 / rnk:0.805</td>
+                  <td class="py-2 px-3">打率.313、32本、82打点、149安打、OPS.946、重みRC 93.5(差+49.2)、前年得票99.6%</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">②柳田 悠岐 (ソフトバンク <code>0.155</code> / .302・19本・70打点・DH87試合)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ==========================================
@@ -2013,25 +2257,25 @@
         ["パ", "指名打者", "レイエス (日本ハム)", "0.659", "レイエス (得票率 81.9%)", "◎ 完全的中"]
       ],
       "2026": [
-        ["セ", "投手", "髙橋 遥人 (阪神・1位)", "0.964", "防御率1.87、16勝3敗、159.0回、150奪三振", "2026年予想：最多勝＆優勝エースとして圧倒的本命"],
-        ["セ", "捕手", "大城 卓三 (巨人・2位)", "0.390", "打率.260、10本、43打点、OPS.758、捕手86試合", "2026年予想：セ捕手内RC・OPSトップ"],
-        ["セ", "一塁手", "大山 悠輔 (阪神・1位)", "0.928", "打率.285、20本、85打点、OPS.819、一塁140試合", "2026年予想：フルタイム一塁＆優勝4番級の打点"],
-        ["セ", "二塁手", "牧 秀悟 (DeNA・3位)", "0.646", "打率.283、30本、75打点、OPS.927、二塁105試合", "2026年予想：30本塁打・OPS.927の圧倒的打撃力"],
-        ["セ", "三塁手", "佐藤 輝明 (阪神・1位)", "0.998", "打率.306、39本、106打点、OPS.991、RC120.9", "2026年予想：三冠王級のスタッツで当確"],
-        ["セ", "遊撃手", "泉口 友汰 (巨人・2位)", "0.666", "打率.264、8本、49打点、OPS.729、遊撃122試合", "2026年予想：2年連続受賞へ遊撃内RC首位"],
-        ["セ", "外野手①", "森下 翔太 (阪神・1位)", "0.990", "打率.292、35本、84打点、OPS.951、RC108.2", "2026年予想：外野1位当確水準"],
-        ["セ", "外野手②", "細川 成也 (中日・6位)", "0.357", "打率.226、25本、71打点、OPS.771、外野142試合", "2026年予想：長打力とフル出場で2枠目有力"],
-        ["セ", "外野手③", "近本 光司 (阪神・1位)", "0.338", "打率.306、5本、114安打、OPS.767、外野90試合", "2026年予想：高打率＆優勝リードオフマン"],
-        ["パ", "投手", "平良 海馬 (西武・2位)", "0.726", "防御率1.36、12勝5敗、146.0回、141奪三振", "2026年予想：防御率1.36の圧倒的スタッツ"],
-        ["パ", "捕手", "佐藤 都志也 (ロッテ・5位)", "0.311", "打率.225、18本、57打点、OPS.710、捕手104試合", "2026年予想：捕手18本塁打・57打点で捕手内RC1位"],
-        ["パ", "一塁手", "清宮 幸太郎 (日本ハム・3位)", "0.354", "打率.237、23本、65打点、OPS.758、一塁108試合", "2026年予想：一塁専任108試合＆23本塁打"],
-        ["パ", "二塁手", "牧原 大成 (ソフトバンク・1位)", "0.857", "打率.300、5本、48打点、140安打、二塁102試合", "2026年予想：打率3割＆優勝二塁手"],
-        ["パ", "三塁手", "栗原 陵矢 (ソフトバンク・1位)", "0.998", "打率.271、40本、118打点、OPS.922、RC107.5", "2026年予想：40本塁打・118打点の二冠級成績"],
-        ["パ", "遊撃手", "水野 達稀 (日本ハム・3位)", "0.700", "打率.289、11本、58打点、142安打、OPS.783", "2026年予想：遊撃でOPS.783・142安打の好成績"],
-        ["パ", "外野手①", "近藤 健介 (ソフトバンク・1位)", "0.997", "打率.309、32本、108打点、OPS.999、RC119.6", "2026年予想：満票級の圧倒的スコア"],
-        ["パ", "外野手②", "西川 史礁 (ロッテ・5位)", "0.724", "打率.290、8本、53打点、155安打、外野134試合", "2026年予想：155安打・フル出場で2枠目有力"],
-        ["パ", "外野手③", "周東 佑京 (ソフトバンク・1位)", "0.710", "打率.275、4本、39打点、133安打、外野124試合", "2026年予想：優勝チームのセンターとして有力"],
-        ["パ", "指名打者", "レイエス (日本ハム・3位)", "0.968", "打率.313、32本、82打点、149安打、OPS.946", "2026年予想：3年連続ベストDHへ圧倒的打撃成績"]
+        ["セ", "投手", "髙橋 遥人 (阪神・1位)", "0.908", "防御率1.87、16勝3敗、159.0回、150奪三振 (2冠)", "◎ 改良後予想：最多勝＆勝率二冠の優勝エース (次点：才木0.098)"],
+        ["セ", "捕手", "大城 卓三 (巨人・2位)", "0.490", "打率.260、10本、43打点、OPS.758、捕手86試合", "◎ 改良後予想：旧0.390→0.490へ上昇！捕手RC首位 (次点：石伊0.313)"],
+        ["セ", "一塁手", "大山 悠輔 (阪神・1位)", "0.878", "打率.285、20本、85打点、OPS.819、一塁140試合", "◎ 改良後予想：前年得票96.4%＆フル出場で盤石 (次点：ダルベック0.124)"],
+        ["セ", "二塁手", "牧 秀悟 (DeNA・3位)", "0.580", "打率.283、30本、75打点、OPS.927、二塁105試合", "◎ 改良後予想：30本塁打で1位 (次点：優勝＆前年受賞の中野0.497が肉薄)"],
+        ["セ", "三塁手", "佐藤 輝明 (阪神・1位)", "0.971", "打率.306、39本、106打点、OPS.991、RC120.9", "◎ 改良後予想：実効専任率0.90適用＆前年97.8%で満票級当確"],
+        ["セ", "遊撃手", "泉口 友汰 (巨人・2位)", "0.694", "打率.264、8本、49打点、OPS.729、遊撃122試合", "◎ 改良後予想：旧0.666→0.694へ上昇！2年連続受賞へ首位 (次点：村松0.152)"],
+        ["セ", "外野手①", "森下 翔太 (阪神・1位)", "0.949", "打率.292、35本、84打点、OPS.951、外野141試合", "◎ 改良後予想：外野1位当確！前年得票96.7%＆重みRC119.0"],
+        ["セ", "外野手②", "増田 珠 (ヤクルト・5位)", "0.315", "打率.293、9本、40打点、118安打、OPS.740、外野102試合", "🔥 改良で逆転選出！外野専用モデルの規定打率評価＆Rankerで2枠目浮上"],
+        ["セ", "外野手③", "細川 成也 (中日・6位)", "0.295", "打率.226、25本、71打点、OPS.771、外野142試合", "◎ 改良後予想：重みRC外野2位(84.7)で3枠目 (次点4位：近本0.276※90試合)"],
+        ["パ", "投手", "平良 海馬 (西武・2位)", "0.674", "防御率1.36(1位)、12勝5敗、146.0回、141奪三振", "◎ 改良後予想：防御率1.36で1位 (次点：最多勝13勝の北山亘基0.339)"],
+        ["パ", "捕手", "佐藤 都志也 (ロッテ・5位)", "0.367", "打率.225、18本、57打点、OPS.710、捕手104試合", "◎ 改良後予想：旧0.311→0.367へ上昇！18本塁打で首位 (次点：小島0.281)"],
+        ["パ", "一塁手", "清宮 幸太郎 (日本ハム・3位)", "0.485", "打率.237、23本、65打点、OPS.758、一塁108試合", "◎ 改良後予想：旧0.354→0.485へ大幅上昇！Rankerで首位 (次点：ネビン0.165)"],
+        ["パ", "二塁手", "牧原 大成 (ソフトバンク・1位)", "0.811", "打率.300、5本、48打点、140安打、二塁102試合", "◎ 改良後予想：打率3割＆優勝＆前年得票92.1%で盤石 (次点：小川0.123)"],
+        ["パ", "三塁手", "栗原 陵矢 (ソフトバンク・1位)", "0.962", "打率.271、40本、118打点、OPS.922、RC107.5", "◎ 改良後予想：40本塁打・118打点の二冠級成績で独走当確"],
+        ["パ", "遊撃手", "水野 達稀 (日本ハム・3位)", "0.754", "打率.289、11本、58打点、142安打、OPS.783", "◎ 改良後予想：旧0.700→0.754へ上昇！二遊間専用モデルでも首位 (次点：紅林0.182)"],
+        ["パ", "外野手①", "近藤 健介 (ソフトバンク・1位)", "0.922", "打率.309、32本、108打点、OPS.999、RC119.6", "◎ 改良後予想：外野専用モデルでも圧倒的1位当確"],
+        ["パ", "外野手②", "西川 史礁 (ロッテ・5位)", "0.764", "打率.290、8本、53打点、155安打、外野134試合", "◎ 改良後予想：旧0.724→0.764へ上昇！前年得票20.1%＆155安打"],
+        ["パ", "外野手③", "周東 佑京 (ソフトバンク・1位)", "0.674", "打率.275、4本、30盗塁(1位)、133安打、外野124試合", "◎ 改良後予想：盗塁王＆優勝＆前年40.2%で3枠目 (次点4位：西川龍馬0.274)"],
+        ["パ", "指名打者", "レイエス (日本ハム・3位)", "0.916", "打率.313、32本、82打点、149安打、OPS.946", "◎ 改良後予想：前年得票99.6%＆32本塁打で3年連続DH当確 (次点：柳田0.155)"]
       ]
     };
 
@@ -2059,90 +2303,89 @@
 
     const inferCases = {
       "sato_2026": {
-        title: "2026年 阪神・佐藤 輝明（セ・三塁手）",
+        title: "2026年 阪神・佐藤 輝明（セ・三塁手 / 4大改良後モデル）",
         features: [
-          ["重み付きRCの当落線差", "+82.77 (2位と圧倒的大差)"],
-          ["ポジション内Zスコア", "+1.49 (三塁手1位)"],
+          ["重み付きRCの当落線差", "+86.2 (実効専任率0.90適用で独走)"],
+          ["前年ベストナイン得票率", "97.8% (2025年受賞・圧倒的実績)"],
           ["素のRC / 順位", "120.89 (三塁レギュラー1位)"],
-          ["三塁スタメン出場数", "125試合 (専任フルタイム)"],
+          ["三塁スタメン / 実効専任率", "125試合 / eff_pos_share = 0.90"],
           ["打撃タイトル数", "4個 (本塁打・打点・安打・出塁)"],
           ["所属チーム順位", "阪神 1位 (リーグ優勝)"]
         ],
         treePath: [
-          "🔹 <strong>【深さ1】</strong> <code>重み付きRCの当落線差 (+82.77) &gt; -2.0</code> → <span class='text-emerald-500 font-bold'>YES（当落線クリア）</span>",
-          "🔹 <strong>【深さ2】</strong> <code>重み付きRCの当落線差 (+82.77) &gt; +12.0</code> → <span class='text-emerald-500 font-bold'>YES（ライバルに大差の独走状態）</span>",
+          "🔹 <strong>【深さ1】</strong> <code>重み付きRCの当落線差 (+86.2) &gt; -2.0</code> → <span class='text-emerald-500 font-bold'>YES（当落線クリア）</span>",
+          "🔹 <strong>【深さ2】</strong> <code>重み付きRCの当落線差 (+86.2) &gt; +12.0 ＆ 前年得票率 97.8%</code> → <span class='text-emerald-500 font-bold'>YES（独走状態）</span>",
           "🔹 <strong>【深さ3】</strong> <code>打撃タイトル数 (4個) ≥ 1 ＆ 優勝チーム</code> → <span class='text-emerald-500 font-bold'>🍃 葉⑦（最高加点ゾーン）へ着地！</span>",
-          "👉 220本の木すべてで最高クラスのプラス葉に着地し、満票級のスコアを形成。"
+          "👉 全体モデル(0.978)とコーナー専用モデルを階層ブレンドし、満票級のスコア0.971を記録。"
         ],
-        prob: "0.991 (99.1%)",
-        vshare: "1.000 (100.0%)",
-        formula: "0.2 × 0.991 + 0.8 × 1.000 = 0.998",
-        score: 0.998,
+        prob: "0.988 (98.8%)",
+        vshare: "0.991 (Ranker: 0.927)",
+        formula: "階層ブレンド(全体90%＋1B/3B/DH専門10%) = 0.971",
+        score: 0.971,
         decision: "🏅 セ・三塁手部門 1位選出（満票級当確）"
       },
       "maki_vs_nakano_2026": {
-        title: "2026年 DeNA・牧 秀悟 vs 阪神・中野 拓夢（セ・二塁手対決）",
+        title: "2026年 DeNA・牧 秀悟 vs 阪神・中野 拓夢（セ・二塁手対決 / 4大改良後）",
         features: [
-          ["牧：重み付きRC当落線差", "+13.34 (二塁1位・30本塁打)"],
-          ["中野：重み付きRC当落線差", "-13.34 (二塁2位・優勝二塁手)"],
-          ["牧：素のRC / OPS", "81.20 / OPS .927 (105試合)"],
-          ["中野：素のRC / OPS", "59.46 / OPS .679 (128試合)"],
+          ["牧：重み付きRC当落線差", "+13.34 (二塁1位・30本塁打・OPS.927)"],
+          ["中野：重み付きRC当落線差", "-13.34 (二塁2位・128試合・優勝)"],
+          ["前年ベストナイン得票率", "牧 1.8% vs 中野 95.3% (前年受賞！)"],
+          ["LGBMRanker 相対スコア", "牧 0.476 vs 中野 0.524 (Rankerは中野優勢)"],
           ["チーム順位の違い", "牧＝DeNA 3位 / 中野＝阪神 1位(優勝)"]
         ],
         treePath: [
-          "🔹 <strong>【深さ1】</strong> 牧は <code>当落線差 +13.34 &gt; -2.0</code> で右枝（当選圏）へ。中野は <code>-13.34</code> で左枝（減点圏）へ分岐。",
-          "🔹 <strong>【深さ2】</strong> 牧は <code>+13.34 &gt; +12.0</code>（個人打撃力で12点以上の大差）を満たし、上位加点葉へ。",
-          "🔹 <strong>【深さ3】</strong> 中野は「優勝チーム＆二塁128試合スタメン」で後半の木で加点されるものの、1段目のRC差（21.7点差）を覆せず。",
-          "👉 『二塁手では優勝プレミアムよりもOPS.927・30本塁打の圧倒的打撃差が優先される』という過去の記者投票傾向を正確に再現！"
+          "🔹 <strong>【深さ1】</strong> 牧は <code>当落線差 +13.34</code> で個人打撃トップ枝へ。中野は <code>前年得票率 95.3% ＆ 優勝 ＆ 128試合専任</code> で二遊間専用モデルの加点枝へ。",
+          "🔹 <strong>【深さ2】</strong> 4大改良（前年得票率＋二遊間専用モデル）により、中野のスコアは旧 <code>0.462 → 0.497</code> へ大幅上昇し大接戦に！",
+          "🔹 <strong>【深さ3】</strong> それでも30本塁打・OPS.927・RC差+21.7点の牧が分類器(0.725)・回帰器(0.584)でリードを守り切る。"
         ],
-        prob: "牧 0.892 / 中野 0.355",
-        vshare: "牧 0.584 / 中野 0.488",
-        formula: "牧: 0.2×0.892 + 0.8×0.584 = 0.646 (vs 中野 0.462)",
-        score: 0.646,
-        decision: "🏅 牧 秀悟が 0.646 vs 0.462 でセ・二塁手1位選出！"
+        prob: "牧 0.725 / 中野 0.453",
+        vshare: "牧 0.584 / 中野 0.499 (Ranker 0.524)",
+        formula: "階層ブレンド(全体75%＋二遊間25%): 牧 0.580 vs 中野 0.497",
+        score: 0.580,
+        decision: "🏅 牧 秀悟が 0.580 vs 0.497 の大接戦を制しセ・二塁手1位！"
       },
       "shuto_2026": {
-        title: "2026年 ソフトバンク・周東 佑京（パ・外野手3枠目）",
+        title: "2026年 ソフトバンク・周東 佑京（パ・外野手3枠目 / 外野手専用モデル）",
         features: [
-          ["重み付きRCの当落線差", "+1.87 (外野4位と僅差の3位！)"],
-          ["ポジション内Zスコア", "+1.01 (外野レギュラー3位)"],
-          ["外野スタメン出場数", "124試合 (フルタイム中堅手)"],
-          ["打撃タイトル数", "1個 (最多盗塁)"],
+          ["外野レギュラー内RC順位", "3位 (重み付きRC当落線差 +1.87)"],
+          ["前年ベストナイン得票率", "40.2% (2025年も外野3枠目で受賞)"],
+          ["外野スタメン出場数", "124試合 (フルタイム中堅手・専任100%)"],
+          ["打撃タイトル数", "1個 (最多盗塁 30盗塁)"],
           ["所属チーム順位", "ソフトバンク 1位 (リーグ優勝)"]
         ],
         treePath: [
-          "🔹 <strong>【深さ1】</strong> 外野手は定員3枠のため、当落線（3位と4位の境界）との差を計算 → <code>+1.87 &gt; -2.0</code> で <span class='text-emerald-500 font-bold'>YES（当落線クリア）</span>",
-          "🔹 <strong>【深さ2】</strong> <code>+1.87 &lt; +12.0</code> のため「外野3枠目を巡る接戦ゾーン」の枝へ進む。",
-          "🔹 <strong>【深さ3】</strong> <code>チーム勝率1位（優勝）＆ 盗塁王タイトル（1個）＆ 124試合スタメン</code> により <span class='text-emerald-500 font-bold'>🍃 葉⑤（接戦勝ち抜き加点）</span>へ着地！"
+          "🔹 <strong>【深さ1】</strong> 外野手専用モデル（α=1.00）で最重要の <code>pos_reg_rank_RC ≤ 3位</code> をクリアし当選圏へ。",
+          "🔹 <strong>【深さ2】</strong> <code>打撃タイトル数 (盗塁王=1) ＆ 前年得票率 40.2%</code> により、4位西川龍馬(0.274)・5位辰己涼介(0.251)を大きく突き放す。",
+          "🔹 <strong>【深さ3】</strong> 分類確率 90.2%・回帰 61.8%・Ranker 61.7% のすべてで高水準を維持。"
         ],
-        prob: "0.945 (94.5%)",
-        vshare: "0.652 (65.2%)",
-        formula: "0.2 × 0.945 + 0.8 × 0.652 = 0.710",
-        score: 0.710,
-        decision: "🏅 パ・外野手部門 3位（近藤・西川史礁に次ぐ3枠目）で選出！"
+        prob: "0.902 (90.2%)",
+        vshare: "0.618 (Ranker: 0.617)",
+        formula: "外野手専用モデル(α=1.00): 0.25×0.902 + 0.50×0.618 + 0.25×0.617 = 0.674",
+        score: 0.674,
+        decision: "🏅 パ・外野手部門 3位（近藤0.922・西川史礁0.764に次ぐ3枠目）で選出！"
       },
       "ohshiro_2026": {
-        title: "2026年 巨人・大城 卓三（セ・捕手）",
+        title: "2026年 巨人・大城 卓三（セ・捕手 / 4大改良後モデル）",
         features: [
-          ["素のRC / ポジション内順位", "48.62 (セ捕手内 1位)"],
-          ["ポジション内Zスコア", "+1.05 (セ捕手内で突出)"],
-          ["重み付きRCの当落線差", "-4.58 (捕手スタメン86試合で割引)"],
-          ["打率 / 本塁打 / OPS", ".260 / 10本塁打 / OPS .758"],
+          ["素のRC / 捕手内順位", "48.62 (セ捕手内 1位・OPS .758)"],
+          ["実効専任率 (eff_pos_share)", "0.91 (86試合先発・主砲フロア緩和適用)"],
+          ["LGBMRanker 相対スコア", "0.617 (セ捕手トップランク)"],
+          ["打率 / 本塁打 / 打点", ".260 / 10本塁打 / 43打点"],
           ["所属チーム順位", "巨人 2位 (Aクラス)"]
         ],
         treePath: [
-          "🔹 <strong>【深さ1】</strong> 出場試合数割引により重み付きRC差は <code>-4.58</code> だが、<code>pos_reg_rank_RC == 1位</code>（捕手内RCトップ）の木でプラス分岐へ。",
-          "🔹 <strong>【深さ2】</strong> <code>position_id == 捕手</code> のカテゴリ分岐により、「捕手は規定打席未到達でもOPS.758・10本塁打なら高評価」という専用ルールが発動。",
-          "🔹 <strong>【深さ3】</strong> ライバル捕手（阪神・坂本や広島・坂倉ら）も捕手専任100試合未満で拮抗する中、打撃指標1位で最上位に。"
+          "🔹 <strong>【深さ1】</strong> 主砲兼任フロア緩和により実効専任率が <code>0.91</code> となり、旧モデルより重み付きRCの割引が軽減。",
+          "🔹 <strong>【深さ2】</strong> 捕手専用モデル（重要度1位：<code>pos_z_OPS</code>）で OPS.758・10本塁打が高く評価される。",
+          "🔹 <strong>【深さ3】</strong> さらに <code>LGBMRanker (0.617)</code> が「2026年セ捕手の中では相対1位」と明確に判定し、旧スコア 0.390 → 0.490 へ大幅上昇！"
         ],
-        prob: "0.630 (63.0%)",
-        vshare: "0.330 (33.0%)",
-        formula: "0.2 × 0.630 + 0.8 × 0.330 = 0.390",
-        score: 0.390,
-        decision: "🏅 票割れ接戦のセ・捕手部門で1位（0.390）となり選出！"
+        prob: "0.518 (51.8%)",
+        vshare: "0.414 (Ranker: 0.617)",
+        formula: "階層ブレンド(全体80%＋捕手専門20%) = 0.490 (vs 2位石伊 0.313)",
+        score: 0.490,
+        decision: "🏅 4大改良でスコア+0.100上昇！セ・捕手部門1位（0.490）で選出"
       },
       "takahashi_2026": {
-        title: "2026年 阪神・髙橋 遥人（セ・投手 / 深さ2モデル）",
+        title: "2026年 阪神・髙橋 遥人（セ・投手 / 3モデルアンサンブル）",
         features: [
           ["先発主要タイトル獲得数", "2個 (最多勝16勝・最高勝率.842)"],
           ["リーグ最多勝に対する比率", "1.000 (16勝 / リーグ1位)"],
@@ -2153,32 +2396,32 @@
         treePath: [
           "🔹 <strong>【深さ1】</strong> <code>先発主要タイトル数 (2個) ≥ 1 ＆ 最多勝比 (1.00) ≥ 0.85</code> → <span class='text-emerald-500 font-bold'>YES（タイトルホルダー枝へ）</span>",
           "🔹 <strong>【深さ2】</strong> <code>規定防御率順位 ≤ 2位 ＆ 貯金 (+13) ≥ 7 ＆ 優勝チーム</code> → <span class='text-emerald-500 font-bold'>🍃 葉③（最有力エース葉）へ着地！</span>",
-          "👉 投手モデルは深さ2（葉3枚）のシンプルな構造のため、180本ほぼすべての木で葉③に入り、2位以下（才木浩人 0.046等）に圧倒的差をつける。"
+          "👉 分類器(0.958)とLGBMRanker(0.758)のアンサンブルで0.908を記録し、2位才木浩人(0.098)・3位村上頌樹(0.047)に圧勝。"
         ],
-        prob: "0.964 (96.4%)",
-        vshare: "0.820 (82.0%)",
-        formula: "投手は α=1.0 (分類確率100%) → 0.964",
-        score: 0.964,
+        prob: "0.958 (95.8%)",
+        vshare: "0.785 (Ranker: 0.758)",
+        formula: "0.75 × 分類(0.958) + 0.25 × Ranker(0.758) = 0.908",
+        score: 0.908,
         decision: "🏅 セ・投手部門 1位選出（圧倒的本命）"
       },
       "taira_2026": {
         title: "2026年 西武・平良 海馬 vs 日本ハム・北山 亘基（パ・投手対決）",
         features: [
           ["平良：成績・タイトル", "12勝5敗 (貯金+7)・防御率 1.36 (1位)"],
-          ["北山：成績・タイトル", "13勝3敗 (貯金+10)・防御率 2.56"],
+          ["北山：成績・タイトル", "13勝3敗 (貯金+10)・防御率 2.56 (2冠)"],
           ["最多勝比 (lg_ratio_top_勝利)", "平良 0.923 (12/13) vs 北山 1.000"],
           ["規定防御率・DIPS差", "平良が防御率1.36で2位に1点以上の大差"],
           ["チーム順位", "平良＝西武 2位 / 北山＝日本ハム 3位"]
         ],
         treePath: [
-          "🔹 <strong>【深さ1】</strong> 平良（最優秀防御率）も北山（最多勝13勝）も <code>主要タイトル ≥ 1 ＆ 最多勝比 ≥ 0.90</code> を満たし、ともに上位枝へ。",
-          "🔹 <strong>【深さ2】</strong> 優勝チーム（ソフトバンク）に13勝以上のタイトル投手が不在の中、<code>規定防御率1位（1.36）＆ チーム2位</code> の平良海馬が、防御率2.56・チーム3位の北山亘基を上回る葉に着地！"
+          "🔹 <strong>【深さ1】</strong> 平良（最優秀防御率1.36）も北山（最多勝13勝・勝率.813）も <code>主要タイトル ≥ 1 ＆ 最多勝比 ≥ 0.90</code> を満たし上位枝へ。",
+          "🔹 <strong>【深さ2】</strong> 優勝チーム（ソフトバンク）に二桁勝利タイトル投手が不在の中、<code>防御率1.36（圧倒的1位）＆ チーム2位</code> の平良海馬が分類確率(0.708)・Ranker(0.570)ともに北山亘基を上回る！"
         ],
-        prob: "平良 0.726 / 北山 0.342",
-        vshare: "平良 0.209 / 北山 0.325",
-        formula: "投手 α=1.0 → 平良 0.726 vs 北山 0.342",
-        score: 0.726,
-        decision: "🏅 平良 海馬が 0.726 vs 0.342 でパ・投手部門1位選出！"
+        prob: "平良 0.708 / 北山 0.309",
+        vshare: "平良 0.192 / 北山 0.330 (Ranker: 平良0.570 vs 北山0.430)",
+        formula: "0.75×分類 + 0.25×Ranker → 平良 0.674 vs 北山 0.339",
+        score: 0.674,
+        decision: "🏅 平良 海馬が 0.674 vs 0.339 でパ・投手部門1位選出！"
       }
     };
 
