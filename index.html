@@ -1230,26 +1230,148 @@
         </div>
       </div>
 
-      <!-- 4. Step 3 & Step 4 Deep Dive Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-2.5">
-          <h3 class="text-sm font-bold">⚖️ STEP 3の秘密：なぜ「分類モデル（確率）」と「回帰モデル（得票率）」の2つを組み合わせるのか？</h3>
-          <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
-            ベストナイン予測では、単に「受賞したか（1か0か）」だけを学習する <code>LGBMClassifier</code> だけでなく、<strong>「記者投票で何%の票を獲得したか（<code>vote_share</code>：0.00〜1.00）」を予測する <code>LGBMRegressor</code> を同時に学習して合算</strong>しています。
-          </p>
-          <div class="p-3 rounded-lg bg-[var(--background)] border border-[var(--border)] text-xs font-mono space-y-1">
-            <div>・<strong>分類器だけの場合</strong>：「得票率99%で圧勝した選手」も「得票率42%で3票差辛勝した選手」も同じ正解ラベル <code>1</code> として扱われ、「3票差で惜敗した2位選手（得票率40%）」は <code>0</code> に切り捨てられてしまいます。</div>
-            <div>・<strong>回帰器を混ぜる効果</strong>：次点選手の「惜しさ（得票率40%）」まで連続値として学習できるため、<strong>野手では「分類確率 20% ＋ 予想得票率 80%（$\alpha=0.2$）」のアンサンブル</strong>にすることで、外野手3枠目や接戦ポジションの順位付け精度が大きく向上します。</div>
+      <!-- 4. Deep Dive: Why Combine Winning Probability (Classifier) + Vote Share (Regressor) + Ranker -->
+      <div class="bg-[var(--card)] border-2 border-sky-500/60 rounded-2xl p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-sky-600 text-white">STEP 3 の核心ロジック</span>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">pred_prob (受賞確率) × pred_vshare (予想得票率) × pred_rank (相対順位)</span>
+            </div>
+            <h3 class="text-base md:text-lg font-bold">
+              ⚖️ なぜ「受賞確率（分類器）」と「予想得票率（回帰器）」を合わせて最終予測スコアを作ったのか？
+            </h3>
           </div>
         </div>
 
-        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-2.5">
-          <h3 class="text-sm font-bold">🧩 STEP 4の秘密：複数ポジション出場選手の「重複選出」を防ぐ貪欲割当（Greedy Assignment）</h3>
+        <p class="text-xs md:text-sm text-[var(--muted-foreground)] leading-relaxed">
+          「受賞確率（<code>LGBMClassifier</code>）」と「予想得票率（<code>LGBMRegressor</code>）」のどちらか片方だけではなく、<strong>両方を掛け合わせて最終予測スコア（<code>pred_score</code>）を作っている理由</strong>は、この2つのモデルが<strong>「まったく違う角度から記者投票のクセを学習しており、お互いの死角（弱点）を完璧に補い合うから」</strong>です。理由は大きく3つあります。
+        </p>
+
+        <!-- 3 Reasons Cards + Concrete Example Table -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-emerald-500/50 space-y-2">
+            <div class="font-bold text-emerald-500 text-sm">理由①：「0か1かの分類器」だけだと、"惜しくも2位だった選手"の情報がすべて捨てられるから</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              分類器（<code>is_winner</code> = <code>1</code> or <code>0</code>）だけでは、「3票差で惜敗した2位選手（141票）」も「0票の控え選手」もまったく同じ<strong>「<code>0</code>（完全なハズレ）」</strong>として切り捨ててしまいます。<br/>
+              <strong>予想得票率（<code>vote_share</code>：0.00〜1.00）を学習する回帰器</strong>を組み合わせることで、「落選したけれど記者から40%〜55%の票を集めた有力選手」からも<strong>『どういう成績なら票が入るのか』という濃淡（グラデーション）をフルに学習でき、教師信号が年19人→年80〜100人（約4〜5倍）に拡大</strong>します。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-sky-500/50 space-y-2">
+            <div class="font-bold text-sky-500 text-sm">理由②：逆に「予想得票率（回帰器）」だけだと、"当落のボーダーライン"がマイルドになるから</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              回帰器は「候補者全員の得票率の二乗誤差（MSE）」を平均的に小さくしようとするため、全体の8割を占める「得票率0%〜5%の下位選手」の誤差にも引っ張られ、<strong>肝心の「1位と2位の当落ライン（どちらが勝つか）」の切れ味が穏やかになりやすい</strong>弱点があります。<br/>
+              一方、<strong>分類器（受賞確率）は「とにかく1位と2位の境界線を跨ぐ条件（例：混戦捕手での優勝スイッチ）」だけに100%集中して鋭い境界を引く</strong>ため、両者を混ぜると最強になります。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-amber-500/50 space-y-2">
+            <div class="font-bold text-amber-500 text-sm">理由③：確率の「頭打ち（飽和）」を防ぎ、複数ポジション選手の「本職割当」を正確にするため</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              受賞確率（分類器）だけを使うと、シグモイド関数の性質上、有力選手はみな確率が <code>0.96〜0.99</code> に張り付いてしまい（飽和）、上位同士の微差や「一塁と三塁のどちらでより圧倒的か」の差がつきにくくなります。<br/>
+              そこに<strong>予想得票率（回帰器）をブレンドすることで、「満票級の当確（得票率95%）」なのか「競り勝ち（得票率55%）」なのかという実力差のスケールが正確に保たれます</strong>。
+            </p>
+          </div>
+        </div>
+
+        <!-- Concrete 2024 Pacific Outfield Example Table -->
+        <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2.5">
+          <div class="text-xs font-bold flex items-center gap-2">
+            <span>📊 具体例（2024年パ・外野手）：なぜ「0 or 1」だけでなく「得票率（0.0〜1.0）」の学習が不可欠なのか？</span>
+          </div>
+          <div class="overflow-x-auto border border-[var(--border)] rounded-lg">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                <tr>
+                  <th class="py-2 px-3">選手名（2024年パ・外野手）</th>
+                  <th class="py-2 px-3">実際の記者得票数（得票率）</th>
+                  <th class="py-2 px-3">① 分類器（受賞確率モデル）から見た正解ラベル</th>
+                  <th class="py-2 px-3">② 回帰器（予想得票率モデル）から見た正解ラベル</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border)] bg-[var(--card)]">
+                <tr>
+                  <td class="py-2 px-3 font-bold">🥇 近藤 健介（1位当選）</td>
+                  <td class="py-2 px-3 font-mono">227票 / 259票（<strong>87.6%</strong>）</td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">1（当選）</td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">0.876（圧倒的トップとして学習）</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold">🥉 周東 佑京（3位当選）</td>
+                  <td class="py-2 px-3 font-mono">144票 / 259票（<strong>55.6%</strong>）</td>
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-500">1（当選）</td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">0.556（当落線上の3枠目として学習）</td>
+                </tr>
+                <tr class="bg-amber-500/10">
+                  <td class="py-2 px-3 font-bold text-amber-500">😢 万波 中正（4位次点・わずか3票差！）</td>
+                  <td class="py-2 px-3 font-mono font-bold">141票 / 259票（<strong>54.4%</strong>）</td>
+                  <td class="py-2 px-3 font-mono font-bold text-red-500">0（❌ 0票の控え選手と全く同じ「ハズレ」扱い！）</td>
+                  <td class="py-2 px-3 font-mono font-bold text-amber-500">0.544（⭕ ほぼ当選級の有力候補として学習！）</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">5試合先発の控え外野手</td>
+                  <td class="py-2 px-3 font-mono text-[var(--muted-foreground)]">0票 / 259票（0.0%）</td>
+                  <td class="py-2 px-3 font-mono text-[var(--muted-foreground)]">0（落選）</td>
+                  <td class="py-2 px-3 font-mono text-[var(--muted-foreground)]">0.000（0票として学習）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Summary Table of the 3 Judges (Classifier + Regressor + Ranker) -->
+        <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2.5">
+          <div class="text-xs font-bold flex items-center justify-between flex-wrap gap-2">
+            <span>🏛️ 最終形：「3人の審査員（分類器 × 回帰器 × ランカー）」の役割分担とブレンド比率</span>
+            <span class="font-mono text-[11px] text-sky-500">pred_score = 0.15 × 受賞確率 + 0.55 × 予想得票率 + 0.30 × 相対ランクスコア</span>
+          </div>
+          <div class="overflow-x-auto border border-[var(--border)] rounded-lg">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-[var(--secondary)] text-[var(--secondary-foreground)] border-b border-[var(--border)]">
+                <tr>
+                  <th class="py-2 px-3">審査員（モデル）</th>
+                  <th class="py-2 px-3">出力する値</th>
+                  <th class="py-2 px-3">得意技（審査での役割）</th>
+                  <th class="py-2 px-3">単体で使ったときの死角（弱点）</th>
+                  <th class="py-2 px-3">野手ブレンド比</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border)] bg-[var(--card)]">
+                <tr>
+                  <td class="py-2 px-3 font-bold font-mono text-emerald-500">① LGBMClassifier</td>
+                  <td class="py-2 px-3 font-bold">受賞確率 (<code>pred_prob</code>)</td>
+                  <td class="py-2 px-3"><strong>「当落の境界線」の番人</strong>：混戦での優勝プレミアムなど「0か1かの決定打」に強い</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">3票差で負けた2位（141票）も0票も同じ「0」として捨ててしまい、上位で確率が0.99に飽和しやすい</td>
+                  <td class="py-2 px-3 font-mono font-bold">15% <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧20%)</span></td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold font-mono text-sky-500">② LGBMRegressor</td>
+                  <td class="py-2 px-3 font-bold">予想得票率 (<code>pred_vshare</code>)</td>
+                  <td class="py-2 px-3"><strong>「得票の厚み（実力値）」の査定人</strong>：2位・3位の得票者（年80〜100名）からも連続値で学習</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">下位選手（0〜5%得票）の誤差にも引っ張られ、当落ギリギリの1位・2位逆転スイッチがやや穏やか</td>
+                  <td class="py-2 px-3 font-mono font-bold text-sky-500">55% <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(旧80%)</span></td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-bold font-mono text-amber-500">③ LGBMRanker</td>
+                  <td class="py-2 px-3 font-bold">相対順位 (<code>pred_rank</code>)</td>
+                  <td class="py-2 px-3"><strong>「その年の椅子取りゲーム」の審判</strong>：年ごとの打高・投高に影響されずグループ内1位を決める</td>
+                  <td class="py-2 px-3 text-[var(--muted-foreground)]">ポジション内の相対順位のみを出力するため、他ポジションとの絶対的な得票率比較はできない</td>
+                  <td class="py-2 px-3 font-mono font-bold text-amber-500">30% <span class="text-[10px] font-normal text-[var(--muted-foreground)]">(タブ⑧で追加)</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Step 4 Greedy Assignment Card -->
+        <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+          <h4 class="text-xs md:text-sm font-bold">🧩 STEP 4の秘密：複数ポジション出場選手の「重複選出」を防ぐ貪欲割当（Greedy Assignment）</h4>
           <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
-            プロ野球では1人の選手が複数ポジション（例：一塁手と外野手、三塁手と一塁手、外野手とDH）で出場することがあります。もし各ポジション独立に1位を選ぶと、同じ選手が2部門で同時に選ばれるルール違反が起きる可能性があります。
+            プロ野球では1人の選手が複数ポジション（例：一塁手と外野手、三塁手と一塁手、外野手とDH）で出場することがあります。もし各ポジション独立に1位を選ぶと、同じ選手が2部門で同時に選ばれるルール違反が起きるため、合算後の <code>pred_score</code> を使って以下の手順で19枠を確定させています。
           </p>
-          <div class="p-3 rounded-lg bg-[var(--background)] border border-[var(--border)] text-xs font-mono space-y-1">
-            <div>1. その年・そのリーグの全候補ペア <code>(選手名, ポジション)</code> を <code>pred_score</code> の高い順にソートする</div>
+          <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] text-xs font-mono space-y-1">
+            <div>1. その年・そのリーグの全候補ペア <code>(選手名, ポジション)</code> を最終予測スコア <code>pred_score</code> の高い順にソートする</div>
             <div>2. 上から順番に、そのポジションの空き枠（捕・一・二・三・遊・DHは1枠、外野手は3枠）があれば選出する</div>
             <div>3. <strong>一度選出された選手は <code>used_players</code> リストに登録し、他ポジションの候補からは自動的に除外する</strong>（<code>select_best_nine_for_league_year</code> 関数）</div>
           </div>
