@@ -246,6 +246,187 @@
           </div>
         </div>
       </div>
+      <!-- Visual Diagram: How the 200-Tree Relay (Gradient Boosting) Works -->
+      <div class="bg-[var(--card)] border-2 border-emerald-500/60 rounded-2xl p-6 shadow-sm space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-600 text-white">図解：200本リレーの仕組み</span>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">max_depth = 2〜3 × learning_rate = 0.03 × 200 Trees</span>
+            </div>
+            <h3 class="text-base md:text-lg font-bold">
+              🏃‍♂️ 図解でイメージする！「深さ2〜3の浅い木 × 200本のリレー形式」はどうやって予測を修正するのか？
+            </h3>
+          </div>
+        </div>
+
+        <p class="text-xs md:text-sm text-[var(--muted-foreground)] leading-relaxed">
+          「深さ2〜3の浅い木だと、1本の木で2〜6項目しか見られないのに、どうやって52項目もの特徴量を活かして高精度を出すのか？」——その答えが、<strong>「1本ごとに見る項目（特徴量）を変えながら、前の木がやり残した誤差（残差）をバトンパスしていく200本リレー」</strong>にあります。
+        </p>
+
+        <!-- Diagram 1: Parallel Majority Vote (RF) vs Serial Baton Relay (LightGBM) SVG -->
+        <div class="p-4 md:p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-4">
+          <div class="text-xs md:text-sm font-bold flex items-center gap-2">
+            <span>📐 図解①：「並列の多数決（ランダムフォレスト）」vs「直列のバトンリレー（LightGBM）」の構造比較</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <svg viewBox="0 0 920 410" class="w-full min-w-[680px] h-auto rounded-xl border border-[var(--border)] bg-slate-950 text-white p-2" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"/>
+                </marker>
+                <marker id="arrow-emerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+                </marker>
+                <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"/>
+                </marker>
+              </defs>
+
+              <!-- Upper Half: Random Forest (Parallel) -->
+              <rect x="16" y="14" width="888" height="162" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+              <text x="32" y="38" fill="#cbd5e1" font-size="13" font-weight="bold">🌲 ランダムフォレスト（並列の多数決：全員が同じスタートラインから別々に走る）</text>
+              <text x="32" y="56" fill="#94a3b8" font-size="11">※ 各木がお互いの結果を知らないため、8割の木が「RCが高い人が勝つ」という同じ主流ルールばかりを学習し、微妙な逆転条件が多数決で消えてしまう</text>
+
+              <!-- Input Data Box RF -->
+              <rect x="32" y="76" width="125" height="78" rx="8" fill="#1e293b" stroke="#475569"/>
+              <text x="94" y="104" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="bold">全特徴量 (52項目)</text>
+              <text x="94" y="122" text-anchor="middle" fill="#94a3b8" font-size="10">毎回ランダムに</text>
+              <text x="94" y="136" text-anchor="middle" fill="#94a3b8" font-size="10">間引いて各木へ</text>
+
+              <!-- Parallel Trees -->
+              <line x1="157" y1="92" x2="215" y2="86" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+              <line x1="157" y1="115" x2="215" y2="115" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+              <line x1="157" y1="138" x2="215" y2="144" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+
+              <rect x="220" y="68" width="210" height="28" rx="6" fill="#1e293b" stroke="#64748b"/>
+              <text x="325" y="86" text-anchor="middle" fill="#e2e8f0" font-size="10.5">木① (深い木): RCと本塁打で判定 → 40%</text>
+
+              <rect x="220" y="101" width="210" height="28" rx="6" fill="#1e293b" stroke="#64748b"/>
+              <text x="325" y="119" text-anchor="middle" fill="#e2e8f0" font-size="10.5">木② (深い木): OPSと打点で判定 → 35%</text>
+
+              <rect x="220" y="134" width="210" height="28" rx="6" fill="#1e293b" stroke="#64748b"/>
+              <text x="325" y="152" text-anchor="middle" fill="#e2e8f0" font-size="10.5">木③〜木200: 似た打撃指標で判定 → 45%</text>
+
+              <line x1="430" y1="82" x2="505" y2="108" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+              <line x1="430" y1="115" x2="505" y2="115" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+              <line x1="430" y1="148" x2="505" y2="122" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+
+              <rect x="510" y="86" width="165" height="58" rx="8" fill="#334155" stroke="#64748b"/>
+              <text x="592" y="110" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold">単純平均（多数決）</text>
+              <text x="592" y="128" text-anchor="middle" fill="#cbd5e1" font-size="10">(40% + 35% + 45%) ÷ N</text>
+
+              <line x1="675" y1="115" x2="720" y2="115" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+
+              <rect x="725" y="82" width="160" height="66" rx="8" fill="#451a1a" stroke="#ef4444"/>
+              <text x="805" y="105" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="bold">最終予測: 40% (落選)</text>
+              <text x="805" y="122" text-anchor="middle" fill="#fecaca" font-size="9.5">当落線上の「優勝捕手」や</text>
+              <text x="805" y="135" text-anchor="middle" fill="#fecaca" font-size="9.5">「主砲兼任」を見落としやすい</text>
+
+              <!-- Lower Half: LightGBM (Serial Relay) -->
+              <rect x="16" y="190" width="888" height="206" rx="12" fill="#06281e" stroke="#10b981" stroke-width="2"/>
+              <text x="32" y="216" fill="#34d399" font-size="13" font-weight="bold">⚡ LightGBM（直列の200本リレー：深さ2〜3のミニ決定木が「残った誤差」をバトンパスして3%ずつ修正！）</text>
+              <text x="32" y="234" fill="#a7f3d0" font-size="11">※ 1本の木は「たった2〜6項目」しか見ないが、走者（木）が替わるたびに「まだ説明できていない誤差」に効く別の項目が順番に登板する！</text>
+
+              <!-- Runner 1 -->
+              <rect x="32" y="252" width="175" height="96" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+              <rect x="42" y="260" width="155" height="20" rx="4" fill="#065f46"/>
+              <text x="119" y="274" text-anchor="middle" fill="#ecfdf5" font-size="10.5" font-weight="bold">🏃 第1〜30走者 (序盤の木)</text>
+              <text x="119" y="294" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="bold">見る項目: 2〜3個だけ</text>
+              <text x="119" y="310" text-anchor="middle" fill="#6ee7b7" font-size="9.5">① 重み付きRCの当落線差</text>
+              <text x="119" y="324" text-anchor="middle" fill="#6ee7b7" font-size="9.5">② ポジション内RC順位</text>
+              <text x="119" y="340" text-anchor="middle" fill="#94a3b8" font-size="9">👉 大枠の打撃序列 (+0.45) を作成</text>
+
+              <!-- Baton 1 -->
+              <line x1="207" y1="300" x2="262" y2="300" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arrow-amber)"/>
+              <rect x="211" y="270" width="48" height="22" rx="4" fill="#78350f" stroke="#f59e0b"/>
+              <text x="235" y="285" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="bold">残差バトン</text>
+              <text x="235" y="316" text-anchor="middle" fill="#fcd34d" font-size="8.5">×0.03反映</text>
+
+              <!-- Runner 2 -->
+              <rect x="267" y="252" width="175" height="96" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+              <rect x="277" y="260" width="155" height="20" rx="4" fill="#065f46"/>
+              <text x="354" y="274" text-anchor="middle" fill="#ecfdf5" font-size="10.5" font-weight="bold">🏃 第31〜100走者 (中盤の木)</text>
+              <text x="354" y="294" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="bold">別の2〜3項目にバトンタッチ！</text>
+              <text x="354" y="310" text-anchor="middle" fill="#38bdf8" font-size="9.5">③ 前年ベストナイン得票率</text>
+              <text x="354" y="324" text-anchor="middle" fill="#38bdf8" font-size="9.5">④ 打撃タイトル数・規定打率</text>
+              <text x="354" y="340" text-anchor="middle" fill="#94a3b8" font-size="9">👉 RC横並びの接戦を加点 (+0.18)</text>
+
+              <!-- Baton 2 -->
+              <line x1="442" y1="300" x2="497" y2="300" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arrow-amber)"/>
+              <rect x="446" y="270" width="48" height="22" rx="4" fill="#78350f" stroke="#f59e0b"/>
+              <text x="470" y="285" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="bold">残差バトン</text>
+              <text x="470" y="316" text-anchor="middle" fill="#fcd34d" font-size="8.5">×0.03反映</text>
+
+              <!-- Runner 3 -->
+              <rect x="502" y="252" width="175" height="96" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+              <rect x="512" y="260" width="155" height="20" rx="4" fill="#065f46"/>
+              <text x="589" y="274" text-anchor="middle" fill="#ecfdf5" font-size="10.5" font-weight="bold">🏃 第101〜200走者 (終盤の木)</text>
+              <text x="589" y="294" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="bold">さらに別の項目で微調整！</text>
+              <text x="589" y="310" text-anchor="middle" fill="#f472b6" font-size="9.5">⑤ チーム優勝 × RC交差項</text>
+              <text x="589" y="324" text-anchor="middle" fill="#f472b6" font-size="9.5">⑥ 実効専任率・新人フラグ</text>
+              <text x="589" y="340" text-anchor="middle" fill="#94a3b8" font-size="9">👉 最後の逆転要因を補正 (+0.12)</text>
+
+              <!-- Final Arrow -->
+              <line x1="677" y1="300" x2="720" y2="300" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-emerald)"/>
+
+              <!-- Goal Box -->
+              <rect x="725" y="252" width="160" height="96" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+              <text x="805" y="275" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="bold">🏁 200本の合計スコア</text>
+              <text x="805" y="295" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="bold">最終予測: 0.750 (当選！)</text>
+              <text x="805" y="314" text-anchor="middle" fill="#a7f3d0" font-size="9.5">浅い木(過学習しない)なのに</text>
+              <text x="805" y="328" text-anchor="middle" fill="#a7f3d0" font-size="9.5">52項目すべての強みが合流！</text>
+
+              <!-- Formula Banner at Bottom -->
+              <rect x="32" y="358" width="853" height="28" rx="6" fill="#0f172a" stroke="#10b981"/>
+              <text x="458" y="376" text-anchor="middle" fill="#6ee7b7" font-size="11" font-family="monospace" font-weight="bold">
+                最終予測スコア ＝ 初期値 ＋ (0.03 × 木①の葉) ＋ (0.03 × 木②の葉) ＋ …… ＋ (0.03 × 木200の葉)   ※1本あたり3%ずつ慎重に修正！
+              </text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Diagram 2: Concrete Mini-Tree Relay Trace on 2024 Central 1B (Okamoto vs Austin) -->
+        <div class="p-4 md:p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-xs md:text-sm font-bold flex items-center gap-2">
+              <span>🔍 図解②：実例で見る「200本リレーの逆転劇」（2024年セ・一塁手：岡本和真 vs オースティン）</span>
+            </h4>
+            <div class="flex gap-2">
+              <button onclick="switchRelayCase('okamoto_2024')" id="relay-btn-okamoto_2024" class="px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer">事例A：2024セ一塁（岡本 vs オースティン）</button>
+              <button onclick="switchRelayCase('masuda_2026')" id="relay-btn-masuda_2026" class="px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer">事例B：2026セ外野2・3枠（増田・細川 vs 近本）</button>
+            </div>
+          </div>
+
+          <p id="relay-case-desc" class="text-xs text-[var(--muted-foreground)] leading-relaxed"></p>
+
+          <!-- Relay Zone Cards (4 Relay Legs) -->
+          <div id="relay-legs-container" class="grid grid-cols-1 md:grid-cols-4 gap-3"></div>
+        </div>
+
+        <!-- 3 Key Takeaways of Why Depth 2-3 x 200 Relay Works -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-1.5">
+            <div class="font-bold text-emerald-500">① 1本の木は「2〜6項目」しか見ないから丸暗記しない</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              1本の木の中で52項目すべてを使って深さ10まで枝分かれすると、「2024年の特定選手1人だけが入る葉」ができて過学習します。あえて1本あたり<strong>深さ2〜3（2〜6項目）に制限する</strong>ことで、1本1本の木は「普遍的なシンプルルール」しか作れなくなります。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-1.5">
+            <div class="font-bold text-sky-500">② 主流項目が消えた後の「残差」に別の項目が反応する</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              第1〜30走者が「重み付きRCの差」で説明できる分を引き算してバトンを渡すため、第31走者以降の目に映る「残りの誤差」にはRCの差が含まれません。その結果、<strong>普段はRCの陰に隠れている「前年得票率」「チーム順位」「タイトル数」が主役として順番に選ばれます</strong>。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-1.5">
+            <div class="font-bold text-amber-500">③ 学習率 0.03（3%刻み）× Early Stopping の安全装置</div>
+            <p class="text-[var(--muted-foreground)] leading-relaxed">
+              各走者の修正量をあえて<strong>3%（<code>learning_rate=0.03</code>）に縮小</strong>して200本積み上げるため、1本の木のミスに引きずられません。さらに検証データで誤差が増え始めた瞬間にリレーを打ち切る <code>early_stopping</code> により過学習を防いでいます。
+            </p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ==========================================
@@ -2773,7 +2954,141 @@
       `;
     }
 
+    const relayCasesData = {
+      "okamoto_2024": {
+        desc: "2024年セ一塁手は、首位打者(.316)・OPS.983のオースティン選手（DeNA・3位）と、巨人優勝4番・27本・83打点の岡本和真選手（一塁100試合＋三塁外野43試合）の大接戦でした。200本のリレーがどうバトンをつないで岡本選手の逆転的中（0.639 vs 0.532）を導いたかを見てみましょう。",
+        legs: [
+          {
+            zone: "🏃 第1区（1〜30本目）",
+            theme: "重み付きRCの当落線差",
+            items: "使う項目：①重み付きRC差 ②実効専任率(eff_pos_share)",
+            detail: "主砲兼任フロア(0.90)により岡本の重み付きRCは82.5(+5.6差)で1位、オースティンは76.9(-5.6差)で2位。まずは両者とも一塁手の有力候補として大きく加点。",
+            p1Name: "岡本 和真", p1Score: 0.340,
+            p2Name: "オースティン", p2Score: 0.360,
+            note: "※OPS関連の木ではオースティン(.983)がややリード"
+          },
+          {
+            zone: "🏃 第2区（31〜90本目）",
+            theme: "打点・安打順位 ＆ 前年得票率",
+            items: "使う項目：③前年得票率 ④ポジション内打点・安打順位",
+            detail: "OPSでは負けていてもまだ残っている岡本のプラス誤差に対し、第2区の木は『150安打・83打点（一塁1位）』と『前年ベストナイン得票実績(16.4%)』で加点！",
+            p1Name: "岡本 和真", p1Score: 0.495,
+            p2Name: "オースティン", p2Score: 0.465,
+            note: "👉 ここで岡本が逆転！（0.495 vs 0.465）"
+          },
+          {
+            zone: "🏃 第3区（91〜150本目）",
+            theme: "チーム優勝 × RC交差項",
+            items: "使う項目：⑤RC_x_優勝 ⑥所属チーム順位(1位)",
+            detail: "さらに第3区の木が『リーグ優勝チームの4番（巨人1位 × RC 98.3）』という決定的な加点ルールを発動し、3位DeNAのオースティンとの差を広げる。",
+            p1Name: "岡本 和真", p1Score: 0.585,
+            p2Name: "オースティン", p2Score: 0.510,
+            note: "👉 優勝ブーストでリード拡大（+0.075差）"
+          },
+          {
+            zone: "🏁 アンカー（151〜200本目）",
+            theme: "LGBMRanker 相対順位補正",
+            items: "使う項目：⑦同一年度・同一ポジション内の相対比較",
+            detail: "最終区間でLGBMRanker（0.533 vs 0.258）とコーナー専用モデルが合流し、最終スコア 0.639 vs 0.532 で岡本和真選手の1位選出が確定！（実投票も183票 vs 117票で的中）",
+            p1Name: "🏆 岡本 和真", p1Score: 0.639,
+            p2Name: "🥈 オースティン", p2Score: 0.532,
+            note: "🎉 最終スコア 0.639 vs 0.532 で逆転的中！"
+          }
+        ]
+      },
+      "masuda_2026": {
+        desc: "2026年セ外野手（定員3枠）は、1位森下翔太（0.949）が独走する一方、残り2枠を増田珠（ヤクルト・打率.293・102試合）、細川成也（中日・25本・142試合）、近本光司（阪神・打率.306・90試合）の3人が争う大混戦です。外野手専用モデルの160本リレーを見てみましょう。",
+        legs: [
+          {
+            zone: "🏃 第1区（1〜30本目）",
+            theme: "外野レギュラー内RC順位",
+            items: "使う項目：①pos_reg_rank_RC (重要度41.7%) ②重み付きRC",
+            detail: "142試合フル出場で25本塁打・重みRC外野2位(84.7)の細川成也がまず先行。近本は外野90試合先発にとどまり重みRC(47.7)で出遅れる。",
+            p1Name: "増田 珠 (102試合)", p1Score: 0.140,
+            p2Name: "近本 光司 (90試合)", p2Score: 0.110,
+            note: "※細川成也は重みRC2位で 0.210 先行"
+          },
+          {
+            zone: "🏃 第2区（31〜80本目）",
+            theme: "リーグ規定打率順位の評価",
+            items: "使う項目：③lg_qual_rank_打率 (重要度7.0%) ④外野先発数",
+            detail: "外野手専用モデルで2番目に重要な『規定打率順位』の木が登板！規定打席に到達し打率.293を記録した増田珠が大きく加点（近本は90試合で規定未到達）。",
+            p1Name: "増田 珠 (規定.293)", p1Score: 0.235,
+            p2Name: "近本 光司 (規定未達)", p2Score: 0.165,
+            note: "👉 規定打率ランクで増田がリード拡大！"
+          },
+          {
+            zone: "🏃 第3区（81〜120本目）",
+            theme: "優勝チーム＆前年得票率の追い上げ",
+            items: "使う項目：⑤前年得票率(89.1%) ⑥チーム優勝(阪神1位)",
+            detail: "第3区では近本が『阪神優勝＆前年ベストナイン得票率89.1%』のプラス葉に入って猛烈に追い上げるが、外野手モデルではチーム順位の重要度が低い(0.9%)ため逆転には至らず。",
+            p1Name: "増田 珠", p1Score: 0.275,
+            p2Name: "近本 光司", p2Score: 0.245,
+            note: "👉 近本が追い上げるも 0.030 差で増田優位"
+          },
+          {
+            zone: "🏁 アンカー（121〜160本目）",
+            theme: "LGBMRanker 外野3枠の相対着地",
+            items: "使う項目：⑦外野3枠カットオフ差 ⑧Rankerスコア",
+            detail: "最終区間でLGBMRankerが増田(0.586)・細川(0.411)を2・3番手に位置づけ、最終スコアは②増田 0.315、③細川 0.295、④近本 0.276 で決着！",
+            p1Name: "🏅 ②増田 0.315 / ③細川 0.295", p1Score: 0.315,
+            p2Name: "次点 ④近本 光司", p2Score: 0.276,
+            note: "🎉 外野専用リレーにより増田・細川が2・3枠獲得！"
+          }
+        ]
+      }
+    };
+
+    function switchRelayCase(caseKey) {
+      const data = relayCasesData[caseKey];
+      if (!data) return;
+      ['okamoto_2024', 'masuda_2026'].forEach(k => {
+        const b = document.getElementById('relay-btn-' + k);
+        if (!b) return;
+        if (k === caseKey) {
+          b.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer";
+        } else {
+          b.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] cursor-pointer";
+        }
+      });
+      document.getElementById('relay-case-desc').textContent = data.desc;
+      const container = document.getElementById('relay-legs-container');
+      container.innerHTML = data.legs.map((leg, idx) => {
+        const w1 = Math.min(Math.round(leg.p1Score * 100), 100);
+        const w2 = Math.min(Math.round(leg.p2Score * 100), 100);
+        return `
+          <div class="p-3.5 rounded-xl bg-[var(--card)] border ${idx === 3 ? 'border-2 border-emerald-500' : 'border-[var(--border)]'} space-y-2.5 flex flex-col justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${idx === 3 ? 'bg-emerald-600 text-white' : 'bg-[var(--secondary)] text-[var(--secondary-foreground)]'}">${leg.zone}</span>
+                <span class="text-[10px] font-mono text-[var(--muted-foreground)]">Step ${idx + 1}/4</span>
+              </div>
+              <div class="text-xs font-bold text-[var(--primary)]">${leg.theme}</div>
+              <div class="text-[11px] font-mono text-amber-500 bg-[var(--background)] px-2 py-1 rounded border border-[var(--border)]">${leg.items}</div>
+              <p class="text-[11px] text-[var(--muted-foreground)] leading-relaxed">${leg.detail}</p>
+            </div>
+            <div class="pt-2 border-t border-[var(--border)] space-y-1.5 text-[11px]">
+              <div>
+                <div class="flex justify-between font-semibold"><span>${leg.p1Name}</span><span class="font-mono text-emerald-500">${leg.p1Score.toFixed(3)}</span></div>
+                <div class="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden mt-0.5">
+                  <div class="h-full bg-emerald-500 transition-all duration-300" style="width: ${w1}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between font-semibold text-[var(--muted-foreground)]"><span>${leg.p2Name}</span><span class="font-mono">${leg.p2Score.toFixed(3)}</span></div>
+                <div class="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden mt-0.5">
+                  <div class="h-full bg-sky-500 transition-all duration-300" style="width: ${w2}%"></div>
+                </div>
+              </div>
+              <div class="text-[10px] font-bold text-emerald-500 pt-0.5">${leg.note}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     // Initialize default state
+    switchRelayCase('okamoto_2024');
     showSeasonTable('2025');
     calcPosWeight();
     selectTransformPlayer('sato_teru_2026');
